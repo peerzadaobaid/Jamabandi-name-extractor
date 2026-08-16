@@ -1,0 +1,1169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Village Person Extractor — Bandipora</title>
+<style>
+  :root {
+    --green: #C8E6C9;
+    --pink:  #FFCDD2;
+    --red:   #E53935;
+    --bg:    #FAFAF7;
+    --ink:   #1F2937;
+    --line:  #D6D3C7;
+    --accent:#0F766E;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    line-height: 1.45;
+  }
+  header {
+    padding: 28px 32px 20px;
+    border-bottom: 1px solid var(--line);
+    background: white;
+  }
+  header h1 {
+    margin: 0 0 4px 0;
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+  header p {
+    margin: 0;
+    font-size: 13px;
+    color: #6B7280;
+  }
+  main {
+    padding: 24px 32px 60px;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+  section { margin-bottom: 28px; }
+  section h2 {
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #6B7280;
+    font-weight: 600;
+    margin: 0 0 12px 0;
+  }
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 14px;
+    align-items: end;
+    padding: 20px;
+    background: white;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+  }
+  .field label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: #4B5563;
+    margin-bottom: 4px;
+  }
+  .field input[type="text"],
+  .field input[type="file"] {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    font-size: 14px;
+    background: var(--bg);
+  }
+  .field input[type="text"][readonly] {
+    background: #EEF2E9;
+    color: #6B7280;
+  }
+  .actions {
+    grid-column: 1 / -1;
+    display: flex;
+    gap: 10px;
+    margin-top: 6px;
+  }
+  .radio-group {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    padding: 6px 0;
+  }
+  .radio {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    cursor: pointer;
+    font-weight: normal;
+  }
+  .radio input[type="radio"] {
+    margin: 0;
+    cursor: pointer;
+  }
+  button {
+    padding: 10px 18px;
+    border: none;
+    border-radius: 4px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    background: var(--accent);
+    color: white;
+  }
+  button:disabled {
+    background: #9CA3AF;
+    cursor: not-allowed;
+  }
+  button.secondary {
+    background: white;
+    color: var(--ink);
+    border: 1px solid var(--line);
+  }
+  .legend {
+    display: flex;
+    gap: 20px;
+    padding: 14px 18px;
+    background: white;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    font-size: 13px;
+    flex-wrap: wrap;
+  }
+  .legend-item { display: flex; align-items: center; gap: 8px; }
+  .swatch {
+    width: 18px; height: 18px;
+    border-radius: 3px;
+    border: 1px solid rgba(0,0,0,0.1);
+  }
+  .swatch.green { background: var(--green); }
+  .swatch.pink  { background: var(--pink); }
+  .swatch.red   { background: var(--red); }
+  .stats {
+    display: flex;
+    gap: 24px;
+    padding: 12px 18px;
+    background: white;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    font-size: 13px;
+    margin-top: 10px;
+  }
+  .stats span b { color: var(--accent); }
+  .table-wrap {
+    overflow-x: auto;
+    background: white;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  thead th {
+    background: #F3F1EA;
+    padding: 10px 12px;
+    text-align: left;
+    font-weight: 600;
+    border-bottom: 1px solid var(--line);
+    position: sticky; top: 0;
+    white-space: nowrap;
+  }
+  tbody td {
+    padding: 8px 12px;
+    border-bottom: 1px solid #EEECDF;
+    vertical-align: top;
+  }
+  tbody tr.khewat { background: var(--green); }
+  tbody tr.khata  { background: var(--pink); }
+  tbody td.dup {
+    background: var(--red) !important;
+    color: white;
+    font-weight: 700;
+  }
+  .msg {
+    padding: 12px 16px;
+    border-radius: 4px;
+    font-size: 13px;
+    margin-top: 10px;
+  }
+  .msg.err  { background: #FEE2E2; color: #991B1B; border: 1px solid #FCA5A5; }
+  .msg.ok   { background: #DCFCE7; color: #166534; border: 1px solid #86EFAC; }
+  .msg.info { background: #E0F2FE; color: #075985; border: 1px solid #7DD3FC; }
+  #preview-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Village Person Extractor</h1>
+  <p>Reads a Jamabandi Excel and lists every person mentioned in Khewat and Khata columns, with source colour-coding.</p>
+</header>
+
+<main>
+
+  <section id="form-section">
+    <h2>Input</h2>
+    <div class="form-grid">
+      <div class="field">
+        <label for="village">Village Name <span style="font-weight:normal;color:#9CA3AF;">(auto from filename if multiple files)</span></label>
+        <input type="text" id="village" placeholder="e.g. Malikpora — leave blank for multi-file">
+      </div>
+      <div class="field">
+        <label for="tehsil">Tehsil</label>
+        <input type="text" id="tehsil" placeholder="e.g. Sumbal">
+      </div>
+      <div class="field">
+        <label for="district">District</label>
+        <input type="text" id="district" value="Bandipora" readonly>
+      </div>
+      <div class="field" style="grid-column: 1 / -1;">
+        <label for="file">Jamabandi Excel — one or many (.xlsx)</label>
+        <input type="file" id="file" accept=".xlsx,.xls" multiple>
+      </div>
+      <div class="field" style="grid-column: 1 / -1;">
+        <label>Extract</label>
+        <div class="radio-group">
+          <label class="radio">
+            <input type="radio" name="mode" value="both" checked>
+            <span>Both Khewat owners &amp; Khata cultivators</span>
+          </label>
+          <label class="radio">
+            <input type="radio" name="mode" value="khewat-only">
+            <span>Khewat owners only (ignore Khata)</span>
+          </label>
+        </div>
+      </div>
+      <div class="actions">
+        <button id="go">Extract Persons</button>
+        <button class="secondary" id="clear" type="button">Clear</button>
+      </div>
+    </div>
+    <div id="status"></div>
+  </section>
+
+  <section id="result" hidden>
+    <h2>Colour Key</h2>
+    <div class="legend">
+      <div class="legend-item"><span class="swatch green"></span> Owner mentioned in Khewat</div>
+      <div class="legend-item"><span class="swatch pink"></span> Cultivator fetched from Khata</div>
+      <div class="legend-item"><span class="swatch red"></span> Duplicate name (appears more than once)</div>
+    </div>
+    <div class="stats" id="stats"></div>
+
+    <div id="preview-controls" style="margin-top:24px;">
+      <h2 style="margin:0;">Extracted Persons</h2>
+      <div style="display:flex; gap:10px;">
+        <button id="dl-xlsx">Download Excel</button>
+        <button id="dl-pdf">Download PDF</button>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table id="preview">
+        <thead>
+          <tr>
+            <th>S.No.</th>
+            <th>Khewat No.</th>
+            <th>Khata No.</th>
+            <th>Name</th>
+            <th>Parentage</th>
+            <th>Caste</th>
+            <th>Residence</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+
+<script>
+/* =========================================================================
+   PARSER
+   ========================================================================= */
+
+// Relation words that separate Name from Parentage.
+// Longer/multi-word forms MUST come first so the regex doesn't stop at the shorter one.
+const RELATION_WORDS = [
+  "daughter in law", "son in law",
+  "granddaughter", "grandson",
+  "pisaran", "pisar", "pisr",
+  "dukhtaran", "dukhter", "dukhtar",
+  "bewah", "bewa", "byuh",
+  "w/o", "d/o", "s/o"
+];
+const RELATION_RE = new RegExp(
+  "\\b(" + RELATION_WORDS.map(w => w.replace(/\//g, "\\/")).join("|") + ")\\b",
+  "i"
+);
+
+// Anything from "sakin..." onward is the residence. Keep as-is (incl. Sakindeh).
+// Matches: "Sakindeh" / "Sakinandeh" / "Sakina" (compound), OR "Sakin Sumbal" (two-word).
+const RESIDENCE_RE = /\bsakin(?:[a-z]+|\s+[a-zA-Z][a-zA-Z\-']*)?/i;
+
+// Fractional shares like "2/7", "1/7", "3/8" — stripped from cell body.
+// Word-boundary guards it from touching "S/O" (letters, not digits).
+const FRACTION_RE = /\b\d+\/\d+\b/g;
+
+// Caste marker — "qaum" or "kaum" followed by the caste word.
+// The following word is EXTRACTED as caste; the whole "qaum/kaum <word>"
+// is stripped from the cell so it doesn't pollute parent names.
+const CASTE_MARKER_RE = /\b(?:qaum|kaum)\s+([a-zA-Z][a-zA-Z\-']*)/i;
+const CASTE_STRIP_RE  = /\b(?:qaum|kaum)\s+\S+/gi;
+
+// Common J&K tribe / caste tokens — used to trim trailing surname off Parentage.
+const TRIBES = new RegExp(
+  "\\b(dar|bhat|sofi|ganaie|ganie|wani|malik|mir|sheikh|khan|rather|magray|" +
+  "hurra|hurrah|butt|mattoo|kaul|kachroo|shah|thakur|pandit|bafanda|lone|" +
+  "peer|beigh|beg|mughal|qureshi|ansari|hakeem)\\b",
+  "i"
+);
+
+// Whole-cell hard-skip tokens (cell is essentially this — no real persons).
+const SKIP_TOKENS = /\b(khud\s*kasht|shara\s*aam|makbuza\s*mahkama|shamlat)\b/i;
+
+// Trailing / inline noise annotations to soft-strip (e.g. matroka/matuqah =
+// "left by deceased"). Removed from cell body — cell continues to be parsed.
+const NOISE_STRIP_RE = /\b(matroka|matruka|matuqah|matwaqah|malik\s*matwaqah)\b/gi;
+
+// Share unit: fraction (1/4, 2/7) OR one area token (11 kanal, 17 marla, etc.)
+// Used for share-driven person segmentation. Adjacent matches merge into one
+// "share block" when segmenting.
+const SHARE_UNIT_RE = /\b\d+\/\d+\b|\b\d+(?:\.\d+)?\s*(?:kanals?|canals?|marlas?|maralas?|marabba\s*foots?|marabbafoots?|sarsahis?|ghumaos?|acres?|hectares?)\b/gi;
+
+// Transaction verbs — the current holder is the person AFTER "ba haq" (or verb).
+const BA_HAQ_RE = /\bba\s*haq\b/i;
+const TXN_VERBS = /\b(bay|hiba|tabadala|intiqal|farogh|intiqaal)\b/i;
+
+// Person separators inside a multi-owner cell.
+const PERSON_SEP = /\s+(?:and|aur|wa)\s+|\s*,\s*/i;
+
+/**
+ * Strip [Recorded share x/y] and similar bracket annotations from a name string.
+ */
+function stripAnnotations(s) {
+  return s.replace(/\[[^\]]*\]/g, " ").replace(/\s+/g, " ").trim();
+}
+
+/**
+ * Strip area/share tokens like "11 kanal", "17 marla", "46 marabba foot", "3 sarsahi".
+ * These are share amounts, not part of names.
+ */
+const AREA_TOKEN_RE = /\b\d+(?:[.\/]\d+)?\s*(?:kanals?|canals?|marlas?|maralas?|marabba\s*foots?|marabbafoots?|sarsahis?|ghumaos?|acres?|hectares?)\b/gi;
+function stripAreaTokens(s) {
+  return s.replace(AREA_TOKEN_RE, " ").replace(/\s+/g, " ").trim();
+}
+
+const titleCase = str => String(str || "").replace(/\b\w+/g, w =>
+  w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()
+);
+
+/**
+ * Parse ONE chunk (single person, area tokens already stripped) into
+ * { name, relation, parent }. Chunks with no relation word return relation:"".
+ */
+function parseChunk(chunk) {
+  const trimmed = chunk.trim();
+  if (!trimmed) return null;
+
+  const relMatch = trimmed.match(RELATION_RE);
+  if (!relMatch) {
+    return { name: trimmed, relation: "", parent: "" };
+  }
+  const name = trimmed.slice(0, relMatch.index).trim();
+  let parent = trimmed.slice(relMatch.index + relMatch[0].length).trim();
+
+  // Truncate parent at next relation word (handles doubled "byuh asmal byuh asmal")
+  const secondRel = parent.match(RELATION_RE);
+  if (secondRel) parent = parent.slice(0, secondRel.index).trim();
+
+  // Truncate parent at first tribe/caste token
+  const tMatch = parent.match(TRIBES);
+  if (tMatch) parent = parent.slice(0, tMatch.index).trim();
+
+  parent = parent.replace(/^[,;\s]+|[,;\s]+$/g, "").trim();
+  return { name, relation: relMatch[0], parent };
+}
+
+/**
+ * Core cell parser — handles chunk splitting, relation chain propagation,
+ * parent cascade, caste + residence extraction. Used by both Khewat and
+ * Khata paths.
+ *
+ * Segmentation is two-level:
+ *   1. Split cell by commas into segments.
+ *   2. Within each segment, if share tokens (fractions or area amounts) are
+ *      present, use share boundaries to detect multiple persons
+ *      (e.g. "gani 1/4 pisar aziz subhan 1/8" = two persons: Gani + Subhan).
+ *      If no shares, parse the whole segment as one person (legacy path).
+ */
+function parseCellChunks(cell) {
+  if (!cell) return [];
+  let s = stripAnnotations(String(cell));
+  if (!s || SKIP_TOKENS.test(s)) return [];
+
+  // --- Whole-cell extractions ---
+
+  // Residence: only if "sakin..." is explicitly present.
+  let residence = "";
+  const resMatch = s.match(RESIDENCE_RE);
+  if (resMatch) residence = resMatch[0].trim();
+  s = s.replace(new RegExp(RESIDENCE_RE.source, "gi"), " ").replace(/\s+/g, " ").trim();
+
+  // Caste: "qaum <caste>" or "kaum <caste>" — extract the word after.
+  let caste = "";
+  const casteMatch = s.match(CASTE_MARKER_RE);
+  if (casteMatch) caste = casteMatch[1];
+  s = s.replace(CASTE_STRIP_RE, " ").replace(/\s+/g, " ").trim();
+
+  // Soft-strip noise tokens (matroka/matuqah/matwaqah = deceased/left markers)
+  s = s.replace(NOISE_STRIP_RE, " ").replace(/\s+/g, " ").trim();
+  if (!s) return [];
+
+  // --- Segment by commas, then by shares within each segment ---
+
+  const segments = s.split(/\s*,\s*/).map(x => x.trim()).filter(Boolean);
+  const chunks = [];
+  for (const seg of segments) {
+    const segChunks = parseShareSegment(seg);
+    chunks.push(...segChunks);
+  }
+  if (!chunks.length) return [];
+
+  // --- Pass 1: PARENT CASCADE ---
+  // A chunk with a relation but no explicit parent inherits the parent from
+  // the nearest chunk that names one (forward first, then backward).
+  for (let i = 0; i < chunks.length; i++) {
+    if (chunks[i].relation && !chunks[i].parent) {
+      for (let j = i + 1; j < chunks.length; j++) {
+        if (chunks[j].parent) { chunks[i].parent = chunks[j].parent; break; }
+      }
+      if (!chunks[i].parent) {
+        for (let j = i - 1; j >= 0; j--) {
+          if (chunks[j].parent) { chunks[i].parent = chunks[j].parent; break; }
+        }
+      }
+    }
+  }
+
+  // --- Pass 2: RELATION CHAIN PROPAGATION ---
+  // A chunk with no relation inherits relation+parent from the NEXT chunk
+  // that has a relation. Jamabandi convention: relation at end of chain
+  // applies backward to all preceding names in that chain.
+  for (let i = 0; i < chunks.length; i++) {
+    if (!chunks[i].relation) {
+      for (let j = i + 1; j < chunks.length; j++) {
+        if (chunks[j].relation) {
+          chunks[i].relation = chunks[j].relation;
+          chunks[i].parent = chunks[j].parent;
+          break;
+        }
+      }
+    }
+  }
+
+  // --- Emit ---
+  return chunks.map(c => {
+    const name = c.name.replace(/[,;]+$/, "").trim();
+    if (!name) return null;
+    return {
+      name: titleCase(name),
+      parentage: titleCase(c.parent),
+      residence: residence ? titleCase(residence) : "",
+      caste: caste ? titleCase(caste) : ""
+    };
+  }).filter(Boolean);
+}
+
+/**
+ * Parse ONE comma-separated segment.
+ *   - If shares (fractions or area tokens) are present: walk share boundaries.
+ *     Each person = [name] [share] [optional: relation + parent], with the
+ *     NEXT person's name beginning right after the previous person's parent
+ *     (or right after the share, if there's no relation).
+ *   - If no shares: fall back to parseChunk on the whole segment.
+ * Returns an array of raw chunk objects: { name, relation, parent }.
+ */
+function parseShareSegment(seg) {
+  // Detect share positions
+  const rawShares = [];
+  const re = new RegExp(SHARE_UNIT_RE.source, "gi");
+  let m;
+  while ((m = re.exec(seg)) !== null) {
+    rawShares.push({ start: m.index, end: m.index + m[0].length });
+  }
+
+  if (rawShares.length === 0) {
+    // Legacy path — no shares, one person per segment
+    const c = parseChunk(seg);
+    return c ? [c] : [];
+  }
+
+  // Consolidate adjacent shares (only whitespace between) into single blocks —
+  // "11 kanal 17 marala 46 marabba foot" is ONE share, three matched tokens.
+  const shares = [rawShares[0]];
+  for (let i = 1; i < rawShares.length; i++) {
+    const prev = shares[shares.length - 1];
+    const gap = seg.slice(prev.end, rawShares[i].start).trim();
+    if (!gap) prev.end = rawShares[i].end;
+    else shares.push(rawShares[i]);
+  }
+
+  const out = [];
+  let cursor = 0;
+  for (let i = 0; i < shares.length; i++) {
+    const share = shares[i];
+    const namePart = seg.slice(cursor, share.start).trim();
+
+    if (!namePart) {
+      cursor = share.end;
+      continue;
+    }
+
+    // Post-share text runs to the next share's start (or end of segment)
+    const postEnd = i + 1 < shares.length ? shares[i + 1].start : seg.length;
+    const rawPost = seg.slice(share.end, postEnd);
+
+    // If the namePart already contains a relation word (Rehman S/O style —
+    // relation comes BEFORE share), parseChunk it and skip post-share parsing.
+    // The post-share text then belongs to the next person's name.
+    if (RELATION_RE.test(namePart)) {
+      const inner = parseChunk(namePart);
+      if (inner) out.push(inner);
+      cursor = share.end;
+      continue;
+    }
+
+    // Otherwise, look for relation+parent AFTER the share (gani 1/4 pisar aziz
+    // subhan 1/8 style — relation applies to previous name, parent is next word,
+    // then the following name starts the next person).
+    let relation = "";
+    let parent = "";
+    let consumed = 0;
+    const relMatch = rawPost.match(new RegExp(RELATION_RE.source, "i"));
+    if (relMatch && rawPost.slice(0, relMatch.index).trim() === "") {
+      relation = relMatch[0];
+      const afterRelStart = relMatch.index + relMatch[0].length;
+      const afterRel = rawPost.slice(afterRelStart);
+      const parentMatch = afterRel.match(/^\s*([a-zA-Z][a-zA-Z\-']*)/);
+      if (parentMatch) {
+        parent = parentMatch[1];
+        consumed = afterRelStart + parentMatch[0].length;
+      } else {
+        consumed = afterRelStart;
+      }
+    }
+
+    cursor = share.end + consumed;
+    out.push({ name: namePart, relation, parent });
+  }
+
+  return out;
+}
+
+/**
+ * Parse a Khewat cell — one or more owners, no transaction verbs.
+ */
+function parseKhewatCell(cell) {
+  return parseCellChunks(cell);
+}
+
+/**
+ * Parse a Khata cell — may contain transaction verbs. Return only CURRENT holder(s).
+ */
+function parseKhataCell(cell) {
+  if (!cell) return [];
+  const s = stripAnnotations(String(cell));
+  if (!s || SKIP_TOKENS.test(s)) return [];
+
+  // Slice to current holder = right side of "ba haq" (or txn verb if ba haq missing)
+  const bh = s.match(BA_HAQ_RE);
+  let target = s;
+  if (bh) {
+    target = s.slice(bh.index + bh[0].length).trim();
+  } else {
+    const tv = s.match(TXN_VERBS);
+    if (tv) target = s.slice(tv.index + tv[0].length).trim();
+  }
+  target = target.replace(/^(ne|ke|ko|se|ba)\s+/i, "").trim();
+
+  return parseCellChunks(target);
+}
+
+/* =========================================================================
+   EXCEL READER — header-name detection with fallback to fixed columns
+   ========================================================================= */
+
+const HEADER_PATTERNS = {
+  khewat:     /khewat|khataoni/i,
+  khata:      /khata\s*no|khata\s*number|\bkhata\b/i,
+  owner:      /owner|malik/i,
+  cultivator: /cultivator|muzarah|mazareen/i
+};
+
+/**
+ * Scan the first ~15 rows of a sheet to find the header row.
+ * Returns { headerRow: idx, cols: { khewat, khata, owner, cultivator } } or null.
+ */
+function detectHeaders(rows) {
+  for (let i = 0; i < Math.min(rows.length, 15); i++) {
+    const row = rows[i] || [];
+    const found = {};
+    row.forEach((cell, c) => {
+      const s = String(cell || "").trim();
+      if (!s) return;
+      // Owner has priority over generic "khata" match if it contains malik-ish
+      if (HEADER_PATTERNS.owner.test(s) && found.owner == null) found.owner = c;
+      else if (HEADER_PATTERNS.cultivator.test(s) && found.cultivator == null) found.cultivator = c;
+      else if (HEADER_PATTERNS.khewat.test(s) && found.khewat == null) found.khewat = c;
+      else if (HEADER_PATTERNS.khata.test(s) && found.khata == null) found.khata = c;
+    });
+    // Need at least owner + khewat to consider this a header row
+    if (found.owner != null && found.khewat != null) {
+      return { headerRow: i, cols: found };
+    }
+  }
+  return null;
+}
+
+/**
+ * Fallback: fixed column indices from earlier generator.
+ * Owner Name = col 4, Cultivator Name = col 12, Khata No = col 15
+ * Khewat No — earlier chats reference multiple layouts; try col 2 first.
+ */
+const FALLBACK_COLS = { khewat: 2, khata: 15, owner: 4, cultivator: 12 };
+
+/**
+ * Normalise a Khewat number: if written as "1-1" (composite Khewat-Khataoni),
+ * take only the first part before the hyphen.
+ */
+function normalizeKhewat(k) {
+  if (!k) return "";
+  const s = String(k).trim();
+  const hyphen = s.indexOf("-");
+  return (hyphen >= 0 ? s.slice(0, hyphen) : s).trim();
+}
+
+/**
+ * Normalise a Khata number: same rule as Khewat — "13-13" → "13".
+ * (Composite Khata-<suffix> — only the first part is required.)
+ */
+function normalizeKhata(k) {
+  if (!k) return "";
+  const s = String(k).trim();
+  const hyphen = s.indexOf("-");
+  return (hyphen >= 0 ? s.slice(0, hyphen) : s).trim();
+}
+
+/**
+ * Derive a village name from an uploaded filename by stripping the extension.
+ * Underscores and hyphens are kept as-is.
+ */
+function villageFromFilename(fn) {
+  return String(fn || "").replace(/\.(xlsx|xls)$/i, "").trim() || "Village";
+}
+
+/**
+ * Read all sheets, extract Khewat + Khata person rows.
+ * Handles continuation rows (blank Khewat/Khata means "same as previous").
+ * @param {XLSX.WorkBook} wb
+ * @param {string} mode - "both" (default) or "khewat-only"
+ */
+async function extractFromWorkbook(wb, mode) {
+  const includeKhata = mode !== "khewat-only";
+  const persons = [];
+  let sno = 0;
+
+  for (const sheetName of wb.SheetNames) {
+    const sheet = wb.Sheets[sheetName];
+    const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "", raw: false });
+    if (!rows.length) continue;
+
+    const detected = detectHeaders(rows);
+    const cols = detected ? detected.cols : FALLBACK_COLS;
+    const startRow = detected ? detected.headerRow + 1 : 0;
+
+    // Track last-seen Khewat and Khata for continuation
+    let lastKhewat = "", lastKhata = "";
+
+    for (let r = startRow; r < rows.length; r++) {
+      const row = rows[r] || [];
+      const khewat = String(row[cols.khewat] || "").trim();
+      const khata  = String(row[cols.khata]  || "").trim();
+      const owner  = String(row[cols.owner]  || "").trim();
+      const cult   = String(row[cols.cultivator] || "").trim();
+
+      if (khewat) lastKhewat = normalizeKhewat(khewat);
+      if (khata)  lastKhata  = normalizeKhata(khata);
+
+      // Skip totally empty rows
+      if (!owner && !cult) continue;
+
+      // Khewat owners (green) — Khata No blank
+      if (owner) {
+        const people = parseKhewatCell(owner);
+        for (const p of people) {
+          persons.push({
+            source: "khewat",
+            khewat: lastKhewat,
+            khata:  "",
+            name: p.name,
+            parentage: p.parentage,
+            residence: p.residence,
+            caste: p.caste
+          });
+        }
+      }
+
+      // Khata cultivators (pink) — both Khewat + Khata filled
+      if (includeKhata && cult) {
+        const people = parseKhataCell(cult);
+        for (const p of people) {
+          persons.push({
+            source: "khata",
+            khewat: lastKhewat,
+            khata:  lastKhata,
+            name: p.name,
+            parentage: p.parentage,
+            residence: p.residence,
+            caste: p.caste
+          });
+        }
+      }
+    }
+  }
+
+  // Assign S.No.
+  persons.forEach((p, i) => p.sno = i + 1);
+
+  // Flag duplicates by (name + parentage), normalised
+  const key = p => (p.name + "|" + p.parentage).toLowerCase().replace(/\s+/g, " ").trim();
+  const counts = {};
+  persons.forEach(p => { counts[key(p)] = (counts[key(p)] || 0) + 1; });
+  persons.forEach(p => { p.duplicate = counts[key(p)] > 1; });
+
+  return persons;
+}
+
+/* =========================================================================
+   RENDER
+   ========================================================================= */
+
+/**
+ * Render the preview table + legend + stats.
+ * Accepts LAST_FILES-shaped array: [{ village, persons, meta }].
+ * When multiple villages are loaded, an extra Village column is shown up
+ * front so rows are attributable at a glance.
+ */
+function renderPreview(entries) {
+  const meta = entries[0].meta;
+  const khewatOnly = meta.mode === "khewat-only";
+  const multi = entries.length > 1;
+
+  // Flatten all persons across villages, stamping each with its village
+  const rows = [];
+  for (const entry of entries) {
+    for (const p of entry.persons) rows.push({ ...p, _village: entry.village });
+  }
+
+  // Rebuild table header — prepend a Village column in multi-file mode
+  const headers = [];
+  if (multi) headers.push("Village");
+  headers.push("S.No.", "Khewat No.");
+  if (!khewatOnly) headers.push("Khata No.");
+  headers.push("Name", "Parentage", "Caste", "Residence");
+  document.querySelector("#preview thead").innerHTML =
+    "<tr>" + headers.map(h => `<th>${h}</th>`).join("") + "</tr>";
+
+  const tbody = document.querySelector("#preview tbody");
+  tbody.innerHTML = "";
+  for (const p of rows) {
+    const tr = document.createElement("tr");
+    tr.className = p.source;
+    const cells = [];
+    if (multi) cells.push(`<td>${escapeHtml(p._village)}</td>`);
+    cells.push(`<td>${p.sno}</td>`);
+    cells.push(`<td>${escapeHtml(p.khewat)}</td>`);
+    if (!khewatOnly) cells.push(`<td>${escapeHtml(p.khata)}</td>`);
+    cells.push(`<td class="${p.duplicate ? "dup" : ""}">${escapeHtml(p.name)}</td>`);
+    cells.push(`<td>${escapeHtml(p.parentage)}</td>`);
+    cells.push(`<td>${escapeHtml(p.caste)}</td>`);
+    cells.push(`<td>${escapeHtml(p.residence)}</td>`);
+    tr.innerHTML = cells.join("");
+    tbody.appendChild(tr);
+  }
+
+  // Legend
+  const legendEl = document.querySelector("#result .legend");
+  legendEl.innerHTML = `
+    <div class="legend-item"><span class="swatch green"></span> Owner mentioned in Khewat</div>
+    ${khewatOnly ? "" : '<div class="legend-item"><span class="swatch pink"></span> Cultivator fetched from Khata</div>'}
+    <div class="legend-item"><span class="swatch red"></span> Duplicate name (appears more than once)</div>
+  `;
+
+  // Stats — aggregate across villages
+  const nKhewat = rows.filter(p => p.source === "khewat").length;
+  const nKhata  = rows.filter(p => p.source === "khata").length;
+  const nDup    = rows.filter(p => p.duplicate).length;
+  const villageStat = multi
+    ? `<span>Villages: <b>${entries.length}</b></span>`
+    : `<span>Village: <b>${escapeHtml(entries[0].village)}</b></span>`;
+  document.getElementById("stats").innerHTML = `
+    <span>Total: <b>${rows.length}</b></span>
+    <span>Khewat: <b>${nKhewat}</b></span>
+    ${khewatOnly ? "" : `<span>Khata: <b>${nKhata}</b></span>`}
+    <span>Duplicate rows: <b>${nDup}</b></span>
+    ${villageStat}
+    <span>Tehsil: <b>${escapeHtml(meta.tehsil)}</b></span>
+  `;
+
+  document.getElementById("result").hidden = false;
+}
+
+function escapeHtml(s) {
+  return String(s || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+/* =========================================================================
+   EXCEL EXPORT
+   ========================================================================= */
+
+/**
+ * Build an Excel workbook for one village and return it as a Blob.
+ * Called by both the single-file download and the multi-file ZIP builder.
+ *
+ * The Excel-only columns Status and Reason for Pendency are appended at the
+ * end of every row as blank cells — for the user to fill in later. They do
+ * NOT appear in the on-screen preview or the PDF.
+ */
+async function buildExcelBlob(persons, meta) {
+  const khewatOnly = meta.mode === "khewat-only";
+  const wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet("Persons");
+
+  // Total columns (incl. trailing Status + Reason for Pendency):
+  //   khewatOnly: 6 base + 2 = 8 → last col H
+  //   both:       7 base + 2 = 9 → last col I
+  const lastCol = khewatOnly ? "H" : "I";
+
+  // Header block
+  ws.mergeCells(`A1:${lastCol}1`);
+  ws.getCell("A1").value = `${meta.village} — Tehsil ${meta.tehsil}, District Bandipora`;
+  ws.getCell("A1").font = { bold: true, size: 14 };
+  ws.getCell("A1").alignment = { horizontal: "center" };
+
+  // Legend row
+  ws.getCell("A2").value = "Colour key:";
+  ws.getCell("A2").font = { bold: true };
+  ws.getCell("B2").value = "Khewat Owner";
+  ws.getCell("B2").fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFC8E6C9" } };
+  if (khewatOnly) {
+    ws.getCell("C2").value = "Duplicate";
+    ws.getCell("C2").fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE53935" } };
+    ws.getCell("C2").font = { bold: true, color: { argb: "FFFFFFFF" } };
+  } else {
+    ws.getCell("C2").value = "Khata Cultivator";
+    ws.getCell("C2").fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFFCDD2" } };
+    ws.getCell("D2").value = "Duplicate";
+    ws.getCell("D2").fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE53935" } };
+    ws.getCell("D2").font = { bold: true, color: { argb: "FFFFFFFF" } };
+  }
+
+  // Column headers (with Status + Reason for Pendency appended)
+  const headers = khewatOnly
+    ? ["S.No.", "Khewat No.", "Name", "Parentage", "Caste", "Residence", "Status", "Reason for Pendency"]
+    : ["S.No.", "Khewat No.", "Khata No.", "Name", "Parentage", "Caste", "Residence", "Status", "Reason for Pendency"];
+  const headerRow = ws.addRow(headers);
+  headerRow.font = { bold: true };
+  headerRow.eachCell(c => {
+    c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF3F1EA" } };
+    c.border = {
+      top: { style: "thin" }, bottom: { style: "thin" },
+      left: { style: "thin" }, right: { style: "thin" }
+    };
+  });
+
+  const nameColIdx = khewatOnly ? 3 : 4;  // 1-indexed
+
+  // Data rows — Status and Reason for Pendency left blank
+  for (const p of persons) {
+    const rowData = khewatOnly
+      ? [p.sno, p.khewat, p.name, p.parentage, p.caste, p.residence, "", ""]
+      : [p.sno, p.khewat, p.khata, p.name, p.parentage, p.caste, p.residence, "", ""];
+    const row = ws.addRow(rowData);
+    const argb = p.source === "khewat" ? "FFC8E6C9" : "FFFFCDD2";
+    row.eachCell(c => {
+      c.fill = { type: "pattern", pattern: "solid", fgColor: { argb } };
+      c.border = {
+        top: { style: "hair" }, bottom: { style: "hair" },
+        left: { style: "hair" }, right: { style: "hair" }
+      };
+      c.alignment = { vertical: "top", wrapText: true };
+    });
+    if (p.duplicate) {
+      const nameCell = row.getCell(nameColIdx);
+      nameCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE53935" } };
+      nameCell.font = { bold: true, color: { argb: "FFFFFFFF" } };
+    }
+  }
+
+  // Column widths (Status = 14, Reason for Pendency = 32)
+  if (khewatOnly) {
+    ws.getColumn(1).width = 7;
+    ws.getColumn(2).width = 11;
+    ws.getColumn(3).width = 26;
+    ws.getColumn(4).width = 26;
+    ws.getColumn(5).width = 12;
+    ws.getColumn(6).width = 30;
+    ws.getColumn(7).width = 14;
+    ws.getColumn(8).width = 32;
+  } else {
+    ws.getColumn(1).width = 7;
+    ws.getColumn(2).width = 11;
+    ws.getColumn(3).width = 11;
+    ws.getColumn(4).width = 26;
+    ws.getColumn(5).width = 26;
+    ws.getColumn(6).width = 12;
+    ws.getColumn(7).width = 30;
+    ws.getColumn(8).width = 14;
+    ws.getColumn(9).width = 32;
+  }
+
+  const buf = await wb.xlsx.writeBuffer();
+  return new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+}
+
+/** Single-file: download the xlsx directly. */
+async function exportExcelSingle(entry) {
+  const blob = await buildExcelBlob(entry.persons, entry.meta);
+  const suffix = entry.meta.mode === "khewat-only" ? "_KhewatOnly" : "";
+  saveAs(blob, `${sanitize(entry.village)}_Persons${suffix}.xlsx`);
+}
+
+/** Multi-file: build one xlsx per village and download as a single ZIP. */
+async function exportExcelZip(entries) {
+  const zip = new JSZip();
+  const suffix = entries[0].meta.mode === "khewat-only" ? "_KhewatOnly" : "";
+  for (const entry of entries) {
+    const blob = await buildExcelBlob(entry.persons, entry.meta);
+    zip.file(`${sanitize(entry.village)}_Persons${suffix}.xlsx`, blob);
+  }
+  const content = await zip.generateAsync({ type: "blob" });
+  const tehsil = entries[0].meta.tehsil;
+  saveAs(content, `${sanitize(tehsil)}_${entries.length}Villages_Persons${suffix}.zip`);
+}
+
+/* =========================================================================
+   PDF EXPORT
+   ========================================================================= */
+
+/**
+ * Build a PDF for one village and return it as a Blob.
+ * PDF does NOT include Status / Reason for Pendency — those are Excel-only.
+ */
+function buildPdfBlob(persons, meta) {
+  const khewatOnly = meta.mode === "khewat-only";
+  const { jsPDF } = window.jspdf;
+  // Landscape so 7 columns (with Caste) fit comfortably
+  const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
+
+  // Title
+  doc.setFontSize(14);
+  doc.setFont("helvetica", "bold");
+  doc.text(`${meta.village} — Tehsil ${meta.tehsil}, District Bandipora`, 40, 40);
+
+  // Legend
+  const legendY = 60;
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "normal");
+  const legendX = 40;
+  doc.setFillColor(200, 230, 201);
+  doc.rect(legendX, legendY - 10, 12, 12, "F");
+  doc.text("Khewat Owner", legendX + 18, legendY);
+  let redX;
+  if (khewatOnly) {
+    redX = legendX + 130;
+  } else {
+    doc.setFillColor(255, 205, 210);
+    doc.rect(legendX + 130, legendY - 10, 12, 12, "F");
+    doc.text("Khata Cultivator", legendX + 148, legendY);
+    redX = legendX + 270;
+  }
+  doc.setFillColor(229, 57, 53);
+  doc.rect(redX, legendY - 10, 12, 12, "F");
+  doc.text("Duplicate", redX + 18, legendY);
+
+  const head = khewatOnly
+    ? [["S.No.", "Khewat No.", "Name", "Parentage", "Caste", "Residence"]]
+    : [["S.No.", "Khewat No.", "Khata No.", "Name", "Parentage", "Caste", "Residence"]];
+  const body = persons.map(p => khewatOnly
+    ? [p.sno, p.khewat, p.name, p.parentage, p.caste, p.residence]
+    : [p.sno, p.khewat, p.khata, p.name, p.parentage, p.caste, p.residence]);
+  const nameColIdx = khewatOnly ? 2 : 3;
+  const columnStyles = khewatOnly
+    ? { 0: { cellWidth: 35 }, 1: { cellWidth: 60 }, 2: { cellWidth: 160 }, 3: { cellWidth: 160 }, 4: { cellWidth: 70 }, 5: { cellWidth: "auto" } }
+    : { 0: { cellWidth: 35 }, 1: { cellWidth: 55 }, 2: { cellWidth: 55 }, 3: { cellWidth: 140 }, 4: { cellWidth: 140 }, 5: { cellWidth: 70 }, 6: { cellWidth: "auto" } };
+
+  doc.autoTable({
+    startY: 80,
+    head,
+    body,
+    styles: { fontSize: 8, cellPadding: 3, valign: "top" },
+    headStyles: { fillColor: [243, 241, 234], textColor: [31, 41, 55], fontStyle: "bold" },
+    columnStyles,
+    didParseCell: function (data) {
+      if (data.section !== "body") return;
+      const p = persons[data.row.index];
+      if (!p) return;
+      if (p.source === "khewat") data.cell.styles.fillColor = [200, 230, 201];
+      else data.cell.styles.fillColor = [255, 205, 210];
+      if (p.duplicate && data.column.index === nameColIdx) {
+        data.cell.styles.fillColor = [229, 57, 53];
+        data.cell.styles.textColor = [255, 255, 255];
+        data.cell.styles.fontStyle = "bold";
+      }
+    },
+    margin: { top: 80, left: 30, right: 30 }
+  });
+
+  return doc.output("blob");
+}
+
+/** Single-file: download the PDF directly. */
+function exportPdfSingle(entry) {
+  const blob = buildPdfBlob(entry.persons, entry.meta);
+  const suffix = entry.meta.mode === "khewat-only" ? "_KhewatOnly" : "";
+  saveAs(blob, `${sanitize(entry.village)}_Persons${suffix}.pdf`);
+}
+
+/** Multi-file: build one PDF per village and download as a single ZIP. */
+async function exportPdfZip(entries) {
+  const zip = new JSZip();
+  const suffix = entries[0].meta.mode === "khewat-only" ? "_KhewatOnly" : "";
+  for (const entry of entries) {
+    const blob = buildPdfBlob(entry.persons, entry.meta);
+    zip.file(`${sanitize(entry.village)}_Persons${suffix}.pdf`, blob);
+  }
+  const content = await zip.generateAsync({ type: "blob" });
+  const tehsil = entries[0].meta.tehsil;
+  saveAs(content, `${sanitize(tehsil)}_${entries.length}Villages_Persons${suffix}_PDF.zip`);
+}
+
+function sanitize(s) {
+  return String(s || "village").replace(/[^A-Za-z0-9_\-]+/g, "_").replace(/^_+|_+$/g, "");
+}
+
+/* =========================================================================
+   WIRE UP
+   ========================================================================= */
+
+// LAST_FILES: array of per-file entries, each { village, persons, meta }.
+// Single-file selection produces a 1-element array; multi-file selection
+// produces one entry per uploaded workbook.
+let LAST_FILES = [];
+
+const statusEl = document.getElementById("status");
+function setStatus(kind, msg) {
+  statusEl.innerHTML = `<div class="msg ${kind}">${msg}</div>`;
+}
+function clearStatus() { statusEl.innerHTML = ""; }
+
+document.getElementById("go").addEventListener("click", async () => {
+  clearStatus();
+  const villageInput = document.getElementById("village").value.trim();
+  const tehsil = document.getElementById("tehsil").value.trim();
+  const files = Array.from(document.getElementById("file").files);
+  const mode = document.querySelector('input[name="mode"]:checked').value;
+
+  if (!tehsil) return setStatus("err", "Enter tehsil.");
+  if (!files.length) return setStatus("err", "Choose at least one Excel file.");
+  // Single file requires either the typed village name or a valid filename to derive it
+  if (files.length === 1 && !villageInput && !villageFromFilename(files[0].name)) {
+    return setStatus("err", "Enter village name (or use a filename that identifies the village).");
+  }
+
+  setStatus("info", `Reading ${files.length} file${files.length > 1 ? "s" : ""}…`);
+  const results = [];
+  const failures = [];
+
+  for (const file of files) {
+    // For single file, prefer the typed village name; otherwise derive from filename.
+    const village = (files.length === 1 && villageInput)
+      ? villageInput
+      : villageFromFilename(file.name);
+    try {
+      const buf = await file.arrayBuffer();
+      const wb = XLSX.read(buf, { type: "array" });
+      const persons = await extractFromWorkbook(wb, mode);
+      if (!persons.length) {
+        failures.push(`${file.name}: no person records found`);
+        continue;
+      }
+      results.push({
+        village,
+        persons,
+        meta: { village, tehsil, mode },
+        sourceFilename: file.name
+      });
+    } catch (err) {
+      console.error(err);
+      failures.push(`${file.name}: ${err.message}`);
+    }
+  }
+
+  if (!results.length) {
+    return setStatus("err", "No person records extracted. " + failures.join("; "));
+  }
+
+  LAST_FILES = results;
+  renderPreview(results);
+
+  const total = results.reduce((n, r) => n + r.persons.length, 0);
+  let msg = `Extracted ${total} person entries from ${results.length} village${results.length > 1 ? "s" : ""}.`;
+  if (failures.length) msg += ` (${failures.length} file${failures.length > 1 ? "s" : ""} failed — see console.)`;
+  setStatus("ok", msg);
+});
+
+document.getElementById("dl-xlsx").addEventListener("click", async () => {
+  if (!LAST_FILES.length) return;
+  if (LAST_FILES.length === 1) await exportExcelSingle(LAST_FILES[0]);
+  else await exportExcelZip(LAST_FILES);
+});
+document.getElementById("dl-pdf").addEventListener("click", async () => {
+  if (!LAST_FILES.length) return;
+  if (LAST_FILES.length === 1) exportPdfSingle(LAST_FILES[0]);
+  else await exportPdfZip(LAST_FILES);
+});
+document.getElementById("clear").addEventListener("click", () => {
+  document.getElementById("village").value = "";
+  document.getElementById("tehsil").value = "";
+  document.getElementById("file").value = "";
+  document.getElementById("result").hidden = true;
+  LAST_FILES = [];
+  clearStatus();
+});
+</script>
+
+</body>
+</html>
