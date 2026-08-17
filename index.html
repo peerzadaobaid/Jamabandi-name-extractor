@@ -308,6 +308,7 @@ const RELATION_WORDS = [
   "pisaran", "pisar", "pisr",
   "dukhtaran", "dukhter", "dukhtar",
   "bewah", "bewa", "byuh",
+  "zauja", "zoja",
   "w/o", "d/o", "s/o"
 ];
 const RELATION_RE = new RegExp(
@@ -338,20 +339,40 @@ const TRIBES = new RegExp(
 );
 
 // Whole-cell hard-skip tokens (cell is essentially this — no real persons).
-const SKIP_TOKENS = /\b(khud\s*kasht|shara\s*aam|makbuza\s*mahkama|shamlat)\b/i;
+const SKIP_TOKENS = /\b(shara\s*aam|makbuza\s*mahkama|shamlat)\b/i;
 
-// Trailing / inline noise annotations to soft-strip (e.g. matroka/matuqah =
-// "left by deceased"). Removed from cell body — cell continues to be parsed.
-const NOISE_STRIP_RE = /\b(matroka|matruka|matuqah|matwaqah|malik\s*matwaqah)\b/gi;
+// Trailing / inline noise annotations to soft-strip.
+// Removed from cell body — cell continues to be parsed.
+//   matroka/matuqah/matwaqah = "left by deceased"
+//   khud kasht / khudkasht    = "self-cultivating" (status flag, not a person)
+//   mushtari                  = "buyer" (transaction marker suffix)
+//   hissa dar / hissa daran   = "share-holder" (transaction marker)
+const NOISE_STRIP_RE = /\b(matroka|matruka|matuqah|matwaqah|malik\s*matwaqah|khud\s*kasht|khudkasht|mushtari|hissa\s*dar[a-z]*)\b/gi;
 
 // Share unit: fraction (1/4, 2/7) OR one area token (11 kanal, 17 marla, etc.)
 // Used for share-driven person segmentation. Adjacent matches merge into one
 // "share block" when segmenting.
 const SHARE_UNIT_RE = /\b\d+\/\d+\b|\b\d+(?:\.\d+)?\s*(?:kanals?|canals?|marlas?|maralas?|marabba\s*foots?|marabbafoots?|sarsahis?|ghumaos?|acres?|hectares?)\b/gi;
 
-// Transaction verbs — the current holder is the person AFTER "ba haq" (or verb).
+// Transaction verbs — the current holder is the person AFTER the verb.
+//   "ba haq"  — Khata cells (bay ba haq X = sold in favor of X)
+//   baya      — Khewat cells (variant of bay, appears before the buyer)
+//   bay, hiba, hibba, tabadala, intiqal, farogh, intiqaal — general
 const BA_HAQ_RE = /\bba\s*haq\b/i;
-const TXN_VERBS = /\b(bay|hiba|tabadala|intiqal|farogh|intiqaal)\b/i;
+const TXN_VERBS = /\b(baya|bay|hibba|hiba|tabadala|intiqal|farogh|intiqaal)\b/i;
+
+// Donation split marker: "hissa daran wahiban" (share-holders of the donee).
+// When an owner cell contains this, everything BEFORE is the original owners
+// (Khewat green), everything AFTER is the donees (treated as Khata pink).
+// Widened to catch spelling variants: wahiban, wahb, wahab, waahb.
+const HISSA_WAHIBAN_RE = /\bhissa\s*[a-z]*\s+wa[a-z]{1,6}b[a-z]*\b/i;
+const HISSA_WAHIBAN_GLOBAL_RE = /\bhissa\s*[a-z]*\s+wa[a-z]{1,6}b[a-z]*\b/gi;
+
+// "Mahub <word>" — "in favor of" style transaction marker. Used together
+// with the wahiban count as a multi-transaction detector: if either kind of
+// marker appears TWO OR MORE times in one cell, we skip the cell entirely
+// (auto-parsing chained transactions is too error-prone).
+const MAHUB_GLOBAL_RE = /\bmahub\s+\w+\b/gi;
 
 // Person separators inside a multi-owner cell.
 const PERSON_SEP = /\s+(?:and|aur|wa)\s+|\s*,\s*/i;
@@ -563,9 +584,21 @@ function parseShareSegment(seg) {
       relation = relMatch[0];
       const afterRelStart = relMatch.index + relMatch[0].length;
       const afterRel = rawPost.slice(afterRelStart);
-      const parentMatch = afterRel.match(/^\s*([a-zA-Z][a-zA-Z\-']*)/);
+      // Parent width: 2 words if this is the LAST share in the segment (nothing
+      // else follows, so trailing text is name continuation like "Jalal Uddin"),
+      // else 1 word — otherwise a 2-word grab like "aziz subhan" would eat the
+      // next person's name.
+      const isLastShare = i === shares.length - 1;
+      const parentRe = isLastShare
+        ? /^\s*([a-zA-Z][a-zA-Z\-']*(?:\s+[a-zA-Z][a-zA-Z\-']*)?)/
+        : /^\s*([a-zA-Z][a-zA-Z\-']*)/;
+      const parentMatch = afterRel.match(parentRe);
       if (parentMatch) {
-        parent = parentMatch[1];
+        let candidate = parentMatch[1];
+        // Trim candidate at first tribe token (e.g. "Abdul Rashid Wani" → "Abdul Rashid")
+        const tMatch = candidate.match(TRIBES);
+        if (tMatch) candidate = candidate.slice(0, tMatch.index).trim();
+        parent = candidate;
         consumed = afterRelStart + parentMatch[0].length;
       } else {
         consumed = afterRelStart;
@@ -717,35 +750,92 @@ async function extractFromWorkbook(wb, mode) {
       // Skip totally empty rows
       if (!owner && !cult) continue;
 
-      // Khewat owners (green) — Khata No blank
+      // Khewat owners — handles three sub-cases, plus a multi-transaction skip:
+      //  (skip) If the cell has TWO OR MORE transaction markers of the same
+      //         kind (hissa-wahiban twice OR mahub twice), it's a chained
+      //         multi-transaction cell — auto-parsing is unreliable, emit
+      //         nothing per user's instruction.
+      //  (a) Donation split: cell contains "hissa daran wahiban" (or variant
+      //      "hissa dar waahb") → persons BEFORE the marker are the original
+      //      owners (Khewat green); persons AFTER are the new donee holders
+      //      (treated as Khata pink).
+      //  (b) Sale transaction: cell contains "baya" (or another txn verb) →
+      //      take only the person AFTER the verb as current owner (Khewat green);
+      //      seller is dropped.
+      //  (c) Normal: parse the whole cell as Khewat owners (green).
       if (owner) {
-        const people = parseKhewatCell(owner);
-        for (const p of people) {
-          persons.push({
-            source: "khewat",
-            khewat: lastKhewat,
-            khata:  "",
-            name: p.name,
-            parentage: p.parentage,
-            residence: p.residence,
-            caste: p.caste
-          });
+        const wahibanCount = (owner.match(HISSA_WAHIBAN_GLOBAL_RE) || []).length;
+        const mahubCount   = (owner.match(MAHUB_GLOBAL_RE)         || []).length;
+        if (wahibanCount >= 2 || mahubCount >= 2) {
+          // Multi-transaction cell — skip entirely
+        } else {
+          const wahibanMatch = owner.match(HISSA_WAHIBAN_RE);
+          if (wahibanMatch) {
+            // (a) Donation split
+            const donorsPart = owner.slice(0, wahibanMatch.index).trim();
+            const doneesPart = owner.slice(wahibanMatch.index + wahibanMatch[0].length).trim();
+            for (const p of parseKhewatCell(donorsPart)) {
+              persons.push({
+                source: "khewat",
+                khewat: lastKhewat,
+                khata:  "",
+                name: p.name, parentage: p.parentage,
+                residence: p.residence, caste: p.caste
+              });
+            }
+            if (includeKhata) {
+              for (const p of parseKhewatCell(doneesPart)) {
+                persons.push({
+                  source: "khata",
+                  khewat: lastKhewat,
+                  khata:  lastKhata,
+                  name: p.name, parentage: p.parentage,
+                  residence: p.residence, caste: p.caste
+                });
+              }
+            }
+          } else {
+            // (b) Transaction slice (if any), then normal Khewat parse
+            let ownerText = owner;
+            const txnMatch = owner.match(TXN_VERBS);
+            if (txnMatch) {
+              ownerText = owner.slice(txnMatch.index + txnMatch[0].length).trim();
+              ownerText = ownerText.replace(/^(ne|ke|ko|se|ba)\s+/i, "").trim();
+            }
+            for (const p of parseKhewatCell(ownerText)) {
+              persons.push({
+                source: "khewat",
+                khewat: lastKhewat,
+                khata:  "",
+                name: p.name, parentage: p.parentage,
+                residence: p.residence, caste: p.caste
+              });
+            }
+          }
         }
       }
 
-      // Khata cultivators (pink) — both Khewat + Khata filled
+      // Khata cultivators (pink) — both Khewat + Khata filled.
+      // Same multi-transaction skip as owner cell: two-or-more wahiban markers
+      // or two-or-more mahub markers → drop the cell entirely.
       if (includeKhata && cult) {
-        const people = parseKhataCell(cult);
-        for (const p of people) {
-          persons.push({
-            source: "khata",
-            khewat: lastKhewat,
-            khata:  lastKhata,
-            name: p.name,
-            parentage: p.parentage,
-            residence: p.residence,
-            caste: p.caste
-          });
+        const cWahiban = (cult.match(HISSA_WAHIBAN_GLOBAL_RE) || []).length;
+        const cMahub   = (cult.match(MAHUB_GLOBAL_RE)         || []).length;
+        if (cWahiban >= 2 || cMahub >= 2) {
+          // Multi-transaction cell — skip entirely
+        } else {
+          const people = parseKhataCell(cult);
+          for (const p of people) {
+            persons.push({
+              source: "khata",
+              khewat: lastKhewat,
+              khata:  lastKhata,
+              name: p.name,
+              parentage: p.parentage,
+              residence: p.residence,
+              caste: p.caste
+            });
+          }
         }
       }
     }
