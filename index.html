@@ -132,9 +132,9 @@
 </head>
 <body>
 
-<h1>Village Bucket Verification Sheet Generator</h1>
+<h1>Village Verification Sheet Generator</h1>
 <div class="subtitle">
-  AgriStack Village Wise Bucket Data → deduped verification sheet with fuzzy name matching, non-human entity grouping, and flexible per-row deletion.
+  Handles two input formats: <strong>AgriStack Village Wise Bucket Data</strong> (BucketId/OwnerName/…) and <strong>Aadhaar Collection sheet</strong> (S.No/Khewat/Khata/Khasra/Name/Parentage/…). Format is auto-detected per file. Fuzzy name matching, non-human entity grouping, and flexible per-row deletion.
 </div>
 
 <!-- ================= STEP 1: UPLOAD ================= -->
@@ -206,15 +206,25 @@ const NON_HUMAN_PATTERNS = [
   { key: 'sarkar',      label: 'Sarkar / Government / State',
     rx: /\bsarkar\b|\bgovern?ment\b|\bstate\b|\bgovt\b/i },
   { key: 'maqbooza',    label: 'Maqbooza (Malikaan / Mahkama)',
-    rx: /\bma[kq]b[ou]+z[ae]h?\b/i },
+    rx: /\bma[kq]b[ou]+(?:z[ae]h?|h)\b/i },
   { key: 'matwaqah',    label: 'Matwaqah / Matroka',
     rx: /\bmat[wr]?aq?ah?\b|\bmatr?[ou]ka\b/i },
   { key: 'khudkasht',   label: 'Khud Kasht',
     rx: /\bkhud[\s-]?kasht\b/i },
   { key: 'sharaam',     label: 'Shara Aam / Common Path',
-    rx: /\bshara[\s-]?e?[\s-]?aam?\b/i },
+    rx: /\bsha+r+h?[\s-]?e?[\s-]?a[am]+\b/i },
   { key: 'wakf',        label: 'Wakf / Trust / Committee / Department',
-    rx: /\bwa[kq]f\b|\btrust\b|\bcommittee\b|\bmahkama\b|\bdepart?ment\b|\bdept\b|\bboard\b/i },
+    rx: /\bwa[kq]f\b|\btrust\b|\bcommittee\b|\bmahkama+\b|\bdepart?ment\b|\bdept\b|\bboard\b/i },
+  { key: 'masjid',      label: 'Masjid / Religious Institution',
+    rx: /\bmasjid\b|\bmosque\b|\bdargah\b|\bziarat\b/i },
+  { key: 'ahalislam',   label: 'Ahal-e-Islam / Community Land',
+    rx: /\bah[al]{1,2}[iy]?\s+(?:islam|assalam|salaam?)\b|\bahli\s+islam\b/i },
+  { key: 'charai',      label: 'Charai / Grazing Land',
+    rx: /\bchar[aeiy]{2,6}\b/i },
+  { key: 'mufeedaam',   label: 'Mufeed Aam / Public Utility',
+    rx: /\bmuf[ie]+d\b/i },
+  { key: 'aabadi',      label: 'Aabadi / Habitation',
+    rx: /\ba+badi\b/i },
   { key: 'nil',         label: 'NIL / Empty / N/A',
     rx: /^(nil|null|none|na|n\/a|#n\/a|-+|\s*)$/i },
 ];
@@ -401,18 +411,37 @@ function readXlsx(file) {
   });
 }
 
-// Detect columns from the header row
-function detectColumns(headerRow) {
+// Detect input file format. Returns {format, headerRow, cols}.
+// - 'bucket'  = AgriStack Village Wise Bucket Data (BucketId/OwnerName/IdentifierName/SurveyNumber/SubSurveyNumber)
+// - 'aadhaar' = Aadhaar Collection sheet (S.NO./KHEWAT/KHATA/KHASRA/NAME/PARENTAGE/TYPE/STATUS/REASON, headers on row 2, title on row 1)
+function detectFormat(rawRows) {
+  const normHeader = row => (row || []).map(c => String(c || '').trim().toLowerCase().replace(/[\s_.-]/g, ''));
+  const r0 = normHeader(rawRows[0]);
+  const r1 = normHeader(rawRows[1]);
+
+  const bucketHits = h => h.filter(x => ['bucketid','ownername','identifiername','surveynumber','subsurveynumber'].includes(x)).length;
+  const aadhaarHits = h => h.filter(x => ['sno','khewat','khata','khasra','name','parentage','type','status','reason'].includes(x)).length;
+
+  // Prefer row 0 if it has bucket-format headers
+  if (bucketHits(r0) >= 2) return { format: 'bucket', headerRow: 0, cols: mapBucketCols(rawRows[0]) };
+  // Else try row 1
+  if (bucketHits(r1) >= 2) return { format: 'bucket', headerRow: 1, cols: mapBucketCols(rawRows[1]) };
+  if (aadhaarHits(r1) >= 4) return { format: 'aadhaar', headerRow: 1, cols: mapAadhaarCols(rawRows[1]) };
+  if (aadhaarHits(r0) >= 4) return { format: 'aadhaar', headerRow: 0, cols: mapAadhaarCols(rawRows[0]) };
+  // Fallback: assume bucket at row 0
+  return { format: 'bucket', headerRow: 0, cols: mapBucketCols(rawRows[0]) };
+}
+
+function mapBucketCols(headerRow) {
   const map = {};
-  headerRow.forEach((h, i) => {
-    const k = String(h || '').trim().toLowerCase().replace(/[\s_-]/g,'');
-    if (k === 'bucketid' || k === 'bucketid') map.bucketId = i;
+  (headerRow || []).forEach((h, i) => {
+    const k = String(h || '').trim().toLowerCase().replace(/[\s_.-]/g, '');
+    if (k === 'bucketid') map.bucketId = i;
     if (k === 'ownername') map.ownerName = i;
     if (k === 'identifiername') map.identifierName = i;
     if (k === 'surveynumber') map.surveyNumber = i;
     if (k === 'subsurveynumber') map.subSurveyNumber = i;
   });
-  // Fallback to well-known positions if headers not found
   if (map.bucketId === undefined) map.bucketId = 0;
   if (map.ownerName === undefined) map.ownerName = 1;
   if (map.identifierName === undefined) map.identifierName = 2;
@@ -421,51 +450,65 @@ function detectColumns(headerRow) {
   return map;
 }
 
+function mapAadhaarCols(headerRow) {
+  const map = {};
+  (headerRow || []).forEach((h, i) => {
+    const k = String(h || '').trim().toLowerCase().replace(/[\s_.-]/g, '');
+    if (k === 'sno') map.sNo = i;
+    if (k === 'khewat') map.khewat = i;
+    if (k === 'khata') map.khata = i;
+    if (k === 'khasra') map.khasra = i;
+    if (k === 'name') map.name = i;
+    if (k === 'parentage') map.parentage = i;
+    if (k === 'type') map.type = i;
+    if (k === 'status') map.status = i;
+    if (k === 'reason') map.reason = i;
+  });
+  // Fallback positions matching the Reshipora sample
+  if (map.sNo === undefined) map.sNo = 0;
+  if (map.khewat === undefined) map.khewat = 1;
+  if (map.khata === undefined) map.khata = 2;
+  if (map.khasra === undefined) map.khasra = 3;
+  if (map.name === undefined) map.name = 4;
+  if (map.parentage === undefined) map.parentage = 5;
+  if (map.type === undefined) map.type = 6;
+  if (map.status === undefined) map.status = 7;
+  if (map.reason === undefined) map.reason = 8;
+  return map;
+}
+
 /* ============================================================
-   PROCESS ONE VILLAGE
+   PROCESS ONE VILLAGE (routes to bucket or aadhaar processor)
    ============================================================ */
 function processVillage(fileEntry, rawRows) {
-  const { file, tehsil, village } = fileEntry;
   if (!rawRows.length) return null;
-  const headerRow = rawRows[0];
-  const cols = detectColumns(headerRow);
+  const fmt = detectFormat(rawRows);
+  if (fmt.format === 'aadhaar') return processAadhaarFile(fileEntry, rawRows, fmt);
+  return processBucketFile(fileEntry, rawRows, fmt);
+}
 
-  // Extract records
+// ---------- Bucket format: many rows per person → one person per (name, parentage), surveys aggregated ----------
+function processBucketFile(fileEntry, rawRows, fmt) {
+  const { file, tehsil, village } = fileEntry;
+  const cols = fmt.cols;
   const records = [];
-  for (let r = 1; r < rawRows.length; r++) {
+  for (let r = fmt.headerRow + 1; r < rawRows.length; r++) {
     const row = rawRows[r];
     if (!row || row.every(c => c === '' || c === null)) continue;
-    const bucketId    = row[cols.bucketId];
-    const owner       = row[cols.ownerName];
-    const identifier  = row[cols.identifierName];
-    const survey      = row[cols.surveyNumber];
-    const subSurvey   = row[cols.subSurveyNumber];
     records.push({
-      bucketId: String(bucketId || '').trim(),
-      name:     isMissing(owner)      ? '' : String(owner).trim(),
-      parentage:isMissing(identifier) ? '' : String(identifier).trim(),
-      survey:   String(survey || '').trim(),
-      subSurvey:String(subSurvey || '').trim(),
+      bucketId:  String(row[cols.bucketId] || '').trim(),
+      name:      isMissing(row[cols.ownerName])      ? '' : String(row[cols.ownerName]).trim(),
+      parentage: isMissing(row[cols.identifierName]) ? '' : String(row[cols.identifierName]).trim(),
+      survey:    String(row[cols.surveyNumber] || '').trim(),
+      subSurvey: String(row[cols.subSurveyNumber] || '').trim(),
     });
   }
-
-  // ---- Dedup by (name + parentage) — case-sensitive Power-Query-like, with NULL fallback to bucketId ----
+  // Dedup by (name + parentage) case-sensitive, NULL falls back to BucketId
   const groups = new Map();
   for (const rec of records) {
-    let key;
-    if (!rec.name && !rec.parentage) {
-      key = 'BID::' + rec.bucketId;
-    } else {
-      key = rec.name + '||' + rec.parentage;
-    }
+    const key = (!rec.name && !rec.parentage) ? 'BID::' + rec.bucketId : rec.name + '||' + rec.parentage;
     if (!groups.has(key)) {
-      groups.set(key, {
-        bucketId: rec.bucketId,
-        name: rec.name,
-        parentage: rec.parentage,
-        surveyPairs: new Set(),
-        rowCount: 0,
-      });
+      groups.set(key, { bucketId: rec.bucketId, name: rec.name, parentage: rec.parentage, surveyPairs: new Set(), rowCount: 0 });
     }
     const g = groups.get(key);
     let sn = rec.survey;
@@ -473,8 +516,6 @@ function processVillage(fileEntry, rawRows) {
     if (sn) g.surveyPairs.add(sn);
     g.rowCount++;
   }
-
-  // Build person rows
   const persons = [];
   let idx = 0;
   for (const g of groups.values()) {
@@ -484,23 +525,48 @@ function processVillage(fileEntry, rawRows) {
       bucketId: g.bucketId,
       name: g.name,
       parentage: g.parentage,
-      surveys: [...g.surveyPairs].sort((a,b)=>{
-        const na = parseFloat(a.split('/')[0]) || 0;
-        const nb = parseFloat(b.split('/')[0]) || 0;
-        return na - nb;
-      }),
+      surveys: [...g.surveyPairs].sort((a,b) => (parseFloat(a.split('/')[0])||0) - (parseFloat(b.split('/')[0])||0)),
       rowCount: g.rowCount,
       deleted: false,
     });
   }
-
   return {
-    key: `${tehsil}__${village}`,
-    tehsil, village,
-    fileName: file.name,
-    persons,
-    nonHumanGroups: [],
-    similarGroups: [],
+    key: `${tehsil}__${village}`, tehsil, village, fileName: file.name,
+    format: 'bucket',
+    persons, nonHumanGroups: [], similarGroups: [],
+  };
+}
+
+// ---------- Aadhaar Collection format: each row is already one person (per khasra), no dedup pass ----------
+function processAadhaarFile(fileEntry, rawRows, fmt) {
+  const { file, tehsil, village } = fileEntry;
+  const cols = fmt.cols;
+  const persons = [];
+  let idx = 0;
+  for (let r = fmt.headerRow + 1; r < rawRows.length; r++) {
+    const row = rawRows[r];
+    if (!row || row.every(c => c === '' || c === null)) continue;
+    // Skip a stray footer row that repeats the header
+    const nameCell = String(row[cols.name] || '').trim();
+    if (nameCell.toLowerCase() === 'name') continue;
+    idx++;
+    persons.push({
+      id: `p${idx}`,
+      name: nameCell,
+      parentage: String(row[cols.parentage] || '').trim(),
+      khewat:    row[cols.khewat] != null ? String(row[cols.khewat]).trim() : '',
+      khata:     row[cols.khata]  != null ? String(row[cols.khata]).trim()  : '',
+      khasra:    row[cols.khasra] != null ? String(row[cols.khasra]).trim() : '',
+      type:      String(row[cols.type]   || '').trim(),
+      status:    String(row[cols.status] || '').trim(),
+      reason:    String(row[cols.reason] || '').trim(),
+      deleted: false,
+    });
+  }
+  return {
+    key: `${tehsil}__${village}`, tehsil, village, fileName: file.name,
+    format: 'aadhaar',
+    persons, nonHumanGroups: [], similarGroups: [],
   };
 }
 
@@ -662,7 +728,7 @@ document.getElementById('process-btn').addEventListener('click', async () => {
       if (!v) { logLine(`  → empty file, skipped.`); continue; }
       buildGroups(v, { doNonHuman, doFuzzy, threshold });
       STATE.villages.push(v);
-      logLine(`  → ${v.persons.length} unique persons; ${v.nonHumanGroups.length} non-human groups; ${v.similarGroups.length} fuzzy clusters.`);
+      logLine(`  → format=${v.format}; ${v.persons.length} rows; ${v.nonHumanGroups.length} non-human groups; ${v.similarGroups.length} fuzzy clusters.`);
     } catch (err) {
       logLine(`  → ERROR: ${err.message}`);
       console.error(err);
@@ -762,21 +828,36 @@ function renderGroupCard(g, kind, v) {
     ? `<button class="danger small" onclick="event.stopPropagation(); checkAllInGroup('${kind}','${g.key||g.members[0].id}')">Check all</button>`
     : `<button class="secondary small" onclick="event.stopPropagation(); checkAllButFirst('${kind}','${g.members[0].id}')">Check all but first</button>`;
   const showScore = kind === 'similar';
+  const isAadhaar = v.format === 'aadhaar';
+
+  // Column headers depend on format
+  const headerCells = isAadhaar
+    ? '<th>Del</th><th>Khewat</th><th>Khata</th><th>Khasra</th><th>Name</th><th>Parentage</th><th>Type</th>'
+    : '<th>Del</th><th>Bucket ID</th><th>Name</th><th>Parentage</th><th>Survey Nos</th><th>#Rows</th>';
   const scoreHeader = showScore ? '<th>Sim (name/par)</th>' : '';
+
   const rows = g.members.map((p, idx) => {
     const scoreCell = showScore
       ? (idx === 0
           ? '<td class="small-muted">— (rep)</td>'
           : `<td class="nowrap">${(p.simToRep?.name ?? 0).toFixed(2)} / ${(p.simToRep?.par ?? 0).toFixed(2)}</td>`)
       : '';
+    const dataCells = isAadhaar
+      ? `<td class="nowrap">${escapeHtml(p.khewat)}</td>
+         <td class="nowrap">${escapeHtml(p.khata)}</td>
+         <td class="nowrap">${escapeHtml(p.khasra)}</td>
+         <td>${escapeHtml(p.name) || '<em>(blank)</em>'}</td>
+         <td>${escapeHtml(p.parentage) || '<em>(blank)</em>'}</td>
+         <td class="nowrap">${escapeHtml(p.type)}</td>`
+      : `<td class="nowrap">${escapeHtml(p.bucketId)}</td>
+         <td>${escapeHtml(p.name) || '<em>(blank)</em>'}</td>
+         <td>${escapeHtml(p.parentage) || '<em>(blank)</em>'}</td>
+         <td>${escapeHtml((p.surveys||[]).join(', '))}</td>
+         <td class="nowrap">${p.rowCount}</td>`;
     return `
     <tr class="${kind === 'nonhuman' ? 'nonhuman-row' : 'dup-row'}">
       <td class="checkbox-cell"><input type="checkbox" class="del-check" data-id="${p.id}"></td>
-      <td class="nowrap">${escapeHtml(p.bucketId)}</td>
-      <td>${escapeHtml(p.name) || '<em>(blank)</em>'}</td>
-      <td>${escapeHtml(p.parentage) || '<em>(blank)</em>'}</td>
-      <td>${escapeHtml(p.surveys.join(', '))}</td>
-      <td class="nowrap">${p.rowCount}</td>
+      ${dataCells}
       ${scoreCell}
     </tr>`;
   }).join('');
@@ -788,9 +869,7 @@ function renderGroupCard(g, kind, v) {
       </div>
       <div class="group-body">
         <table>
-          <thead><tr>
-            <th>Del</th><th>Bucket ID</th><th>Name</th><th>Parentage</th><th>Survey Nos</th><th>#Rows</th>${scoreHeader}
-          </tr></thead>
+          <thead><tr>${headerCells}${scoreHeader}</tr></thead>
           <tbody>${rows}</tbody>
         </table>
       </div>
@@ -799,21 +878,30 @@ function renderGroupCard(g, kind, v) {
 
 function renderFullTable(v) {
   const alive = v.persons;
-  let html = `<table>
-    <thead><tr>
-      <th>S.No.</th><th>Bucket ID</th><th>Name</th><th>Parentage</th><th>Survey Nos</th><th>#Rows</th><th>Flag</th>
-    </tr></thead><tbody>`;
+  const isAadhaar = v.format === 'aadhaar';
+  const headerCells = isAadhaar
+    ? '<th>S.No.</th><th>Khewat</th><th>Khata</th><th>Khasra</th><th>Name</th><th>Parentage</th><th>Type</th><th>Flag</th>'
+    : '<th>S.No.</th><th>Bucket ID</th><th>Name</th><th>Parentage</th><th>Survey Nos</th><th>#Rows</th><th>Flag</th>';
+  let html = `<table><thead><tr>${headerCells}</tr></thead><tbody>`;
   let sn = 0;
   for (const p of alive) {
     if (!p.deleted) sn++;
     const flag = p.nonHumanKey ? '⚠️ Non-human' : '';
+    const dataCells = isAadhaar
+      ? `<td class="nowrap">${escapeHtml(p.khewat)}</td>
+         <td class="nowrap">${escapeHtml(p.khata)}</td>
+         <td class="nowrap">${escapeHtml(p.khasra)}</td>
+         <td>${escapeHtml(p.name) || '<em>(blank)</em>'}</td>
+         <td>${escapeHtml(p.parentage) || '<em>(blank)</em>'}</td>
+         <td class="nowrap">${escapeHtml(p.type)}</td>`
+      : `<td>${escapeHtml(p.bucketId)}</td>
+         <td>${escapeHtml(p.name) || '<em>(blank)</em>'}</td>
+         <td>${escapeHtml(p.parentage) || '<em>(blank)</em>'}</td>
+         <td>${escapeHtml((p.surveys||[]).join(', '))}</td>
+         <td>${p.rowCount}</td>`;
     html += `<tr class="${p.deleted ? 'deleted-row' : ''}">
       <td>${p.deleted ? '—' : sn}</td>
-      <td>${escapeHtml(p.bucketId)}</td>
-      <td>${escapeHtml(p.name) || '<em>(blank)</em>'}</td>
-      <td>${escapeHtml(p.parentage) || '<em>(blank)</em>'}</td>
-      <td>${escapeHtml(p.surveys.join(', '))}</td>
-      <td>${p.rowCount}</td>
+      ${dataCells}
       <td>${flag}</td>
     </tr>`;
   }
@@ -866,26 +954,27 @@ window.applyDeletions = function() {
   const checkedIds = new Set([...document.querySelectorAll('.del-check:checked')].map(cb => cb.dataset.id));
   if (!checkedIds.size) { alert('Nothing checked.'); return; }
 
-  // For similar groups: merge surveys + rowCount from checked → first unchecked (survivor)
-  for (const g of v.similarGroups) {
-    const aliveMembers = g.members.filter(m => !m.deleted);
-    const checked = aliveMembers.filter(m => checkedIds.has(m.id));
-    const kept    = aliveMembers.filter(m => !checkedIds.has(m.id));
-    if (!checked.length || !kept.length) continue;
-    const survivor = kept[0];
-    const mergedSet = new Set(survivor.surveys);
-    for (const c of checked) c.surveys.forEach(s => mergedSet.add(s));
-    survivor.surveys = [...mergedSet].sort((a,b)=>{
-      const na = parseFloat(a.split('/')[0]) || 0;
-      const nb = parseFloat(b.split('/')[0]) || 0;
-      return na - nb;
-    });
-    survivor.rowCount += checked.reduce((s,m)=>s+m.rowCount, 0);
+  // Bucket format only: merge surveys + rowCount from checked → first surviving row of cluster.
+  // Aadhaar format: each row is one khasra, no aggregation; just delete.
+  if (v.format === 'bucket') {
+    for (const g of v.similarGroups) {
+      const aliveMembers = g.members.filter(m => !m.deleted);
+      const checked = aliveMembers.filter(m => checkedIds.has(m.id));
+      const kept    = aliveMembers.filter(m => !checkedIds.has(m.id));
+      if (!checked.length || !kept.length) continue;
+      const survivor = kept[0];
+      const mergedSet = new Set(survivor.surveys);
+      for (const c of checked) c.surveys.forEach(s => mergedSet.add(s));
+      survivor.surveys = [...mergedSet].sort((a,b)=>{
+        const na = parseFloat(a.split('/')[0]) || 0;
+        const nb = parseFloat(b.split('/')[0]) || 0;
+        return na - nb;
+      });
+      survivor.rowCount += checked.reduce((s,m)=>s+m.rowCount, 0);
+    }
   }
 
-  // Mark checked as deleted (do this after merging, so we've read their data first)
   for (const p of v.persons) if (checkedIds.has(p.id)) p.deleted = true;
-
   renderTabs(); renderActiveTab();
 };
 
@@ -930,83 +1019,113 @@ async function buildExcelBlob(v) {
   const alive = v.persons.filter(p => !p.deleted);
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet('Verification');
-  // hidden lists sheet for DV
   const listSheet = wb.addWorksheet('_lists');
   listSheet.state = 'hidden';
   listSheet.getCell('A1').value = 'Issued';
   listSheet.getCell('A2').value = 'Pending';
   wb.definedNames.add(`_lists!$A$1:$A$2`, 'StatusList');
 
-  // Header banner
-  ws.mergeCells('A1:H1');
-  const hdr = ws.getCell('A1');
-  hdr.value = `District: Bandipora  |  Tehsil: ${v.tehsil}  |  Village: ${v.village}`;
-  hdr.font = { bold: true, size: 12 };
-  hdr.alignment = { horizontal: 'center' };
-  ws.getRow(1).height = 22;
+  if (v.format === 'aadhaar') {
+    // 9-col Aadhaar Collection structure
+    ws.mergeCells('A1:I1');
+    const hdr = ws.getCell('A1');
+    hdr.value = `AGRISTACK — AADHAAR SEEDING (POST-PRUNE)  |  Village: ${v.village}  |  Tehsil: ${v.tehsil}  |  District: Bandipora`;
+    hdr.font = { bold: true, size: 12 };
+    hdr.alignment = { horizontal: 'center' };
+    ws.getRow(1).height = 22;
 
-  // Column headers (row 2)
-  const headers = ['S.No.', 'Bucket ID', 'Name', 'Parentage', 'Survey Nos', '#Rows', 'Status', 'Reason for Pendency'];
-  ws.getRow(2).values = headers;
-  ws.getRow(2).font = { bold: true };
-  ws.getRow(2).alignment = { horizontal: 'center', vertical: 'middle' };
-  ws.getRow(2).height = 24;
+    ws.getRow(2).values = ['S.NO.','KHEWAT','KHATA','KHASRA','NAME','PARENTAGE','TYPE','STATUS','REASON'];
+    ws.getRow(2).font = { bold: true };
+    ws.getRow(2).alignment = { horizontal: 'center', vertical: 'middle' };
+    ws.getRow(2).height = 24;
 
-  // Column widths (Status = 40% of Reason width)
-  ws.columns = [
-    { width: 6 },   // S.No.
-    { width: 14 },  // Bucket ID
-    { width: 22 },  // Name
-    { width: 22 },  // Parentage
-    { width: 26 },  // Surveys
-    { width: 8 },   // #Rows
-    { width: 10 },  // Status
-    { width: 25 },  // Reason
-  ];
+    // Widths — Status = ~40% of Reason
+    ws.columns = [
+      { width: 6 },   // S.No.
+      { width: 8 },   // Khewat
+      { width: 8 },   // Khata
+      { width: 14 },  // Khasra
+      { width: 24 },  // Name
+      { width: 26 },  // Parentage
+      { width: 12 },  // Type
+      { width: 10 },  // Status
+      { width: 25 },  // Reason
+    ];
 
-  // Data rows
-  alive.forEach((p, i) => {
-    const row = ws.addRow([
-      i + 1,
-      p.bucketId,
-      p.name,
-      p.parentage,
-      p.surveys.join(', '),
-      p.rowCount,
-      '',   // Status (DV below)
-      '',   // Reason
-    ]);
-    row.alignment = { vertical: 'top', wrapText: true };
-  });
+    alive.forEach((p, i) => {
+      const row = ws.addRow([i + 1, p.khewat, p.khata, p.khasra, p.name, p.parentage, p.type, p.status || '', p.reason || '']);
+      row.alignment = { vertical: 'top', wrapText: true };
+    });
 
-  // Data validation on Status column (col G, rows 3..3+n)
-  const lastRow = 2 + alive.length;
-  for (let r = 3; r <= lastRow; r++) {
-    ws.getCell(`G${r}`).dataValidation = {
-      type: 'list', allowBlank: true,
-      formulae: ['=StatusList'],
-      showErrorMessage: true, errorStyle: 'warning',
-      errorTitle: 'Invalid', error: 'Choose Issued or Pending'
-    };
-  }
-
-  // Borders
-  for (let r = 2; r <= lastRow; r++) {
-    for (let c = 1; c <= 8; c++) {
-      ws.getCell(r, c).border = {
-        top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'}
+    const lastRow = 2 + alive.length;
+    for (let r = 3; r <= lastRow; r++) {
+      ws.getCell(`H${r}`).dataValidation = {
+        type: 'list', allowBlank: true, formulae: ['=StatusList'],
+        showErrorMessage: true, errorStyle: 'warning',
+        errorTitle: 'Invalid', error: 'Choose Issued or Pending'
       };
     }
-  }
+    for (let r = 2; r <= lastRow; r++) {
+      for (let c = 1; c <= 9; c++) {
+        ws.getCell(r, c).border = {
+          top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'}
+        };
+      }
+    }
+    ws.views = [{ state: 'frozen', ySplit: 2 }];
+    ws.pageSetup = {
+      orientation: 'landscape', paperSize: 9,
+      fitToPage: true, fitToWidth: 1, fitToHeight: 0,
+      margins: { left:0.4, right:0.4, top:0.5, bottom:0.5, header:0.3, footer:0.3 },
+      printTitlesRow: '1:2',
+    };
+  } else {
+    // Bucket format — original 8-col structure
+    ws.mergeCells('A1:H1');
+    const hdr = ws.getCell('A1');
+    hdr.value = `District: Bandipora  |  Tehsil: ${v.tehsil}  |  Village: ${v.village}`;
+    hdr.font = { bold: true, size: 12 };
+    hdr.alignment = { horizontal: 'center' };
+    ws.getRow(1).height = 22;
 
-  // Freeze / print settings
-  ws.views = [{ state: 'frozen', ySplit: 2 }];
-  ws.pageSetup = {
-    orientation: 'landscape', paperSize: 9,
-    fitToPage: true, fitToWidth: 1, fitToHeight: 0,
-    margins: { left:0.4, right:0.4, top:0.5, bottom:0.5, header:0.3, footer:0.3 },
-    printTitlesRow: '1:2',
-  };
+    ws.getRow(2).values = ['S.No.','Bucket ID','Name','Parentage','Survey Nos','#Rows','Status','Reason for Pendency'];
+    ws.getRow(2).font = { bold: true };
+    ws.getRow(2).alignment = { horizontal: 'center', vertical: 'middle' };
+    ws.getRow(2).height = 24;
+
+    ws.columns = [
+      { width: 6 }, { width: 14 }, { width: 22 }, { width: 22 },
+      { width: 26 }, { width: 8 }, { width: 10 }, { width: 25 },
+    ];
+
+    alive.forEach((p, i) => {
+      const row = ws.addRow([i + 1, p.bucketId, p.name, p.parentage, (p.surveys||[]).join(', '), p.rowCount, '', '']);
+      row.alignment = { vertical: 'top', wrapText: true };
+    });
+
+    const lastRow = 2 + alive.length;
+    for (let r = 3; r <= lastRow; r++) {
+      ws.getCell(`G${r}`).dataValidation = {
+        type: 'list', allowBlank: true, formulae: ['=StatusList'],
+        showErrorMessage: true, errorStyle: 'warning',
+        errorTitle: 'Invalid', error: 'Choose Issued or Pending'
+      };
+    }
+    for (let r = 2; r <= lastRow; r++) {
+      for (let c = 1; c <= 8; c++) {
+        ws.getCell(r, c).border = {
+          top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'}
+        };
+      }
+    }
+    ws.views = [{ state: 'frozen', ySplit: 2 }];
+    ws.pageSetup = {
+      orientation: 'landscape', paperSize: 9,
+      fitToPage: true, fitToWidth: 1, fitToHeight: 0,
+      margins: { left:0.4, right:0.4, top:0.5, bottom:0.5, header:0.3, footer:0.3 },
+      printTitlesRow: '1:2',
+    };
+  }
 
   const buf = await wb.xlsx.writeBuffer();
   return new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
@@ -1017,31 +1136,47 @@ function buildPdfBlob(v) {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
 
-  const body = alive.map((p, i) => [
-    i + 1, p.bucketId, p.name || '', p.parentage || '',
-    p.surveys.join(', '), p.rowCount, '', ''
-  ]);
+  const isAadhaar = v.format === 'aadhaar';
+  const head = isAadhaar
+    ? [['S.No.','Khewat','Khata','Khasra','Name','Parentage','Type','Status','Reason']]
+    : [['S.No.','Bucket ID','Name','Parentage','Survey Nos','#Rows','Status','Reason for Pendency']];
+  const body = isAadhaar
+    ? alive.map((p, i) => [i + 1, p.khewat, p.khata, p.khasra, p.name || '', p.parentage || '', p.type, p.status || '', p.reason || ''])
+    : alive.map((p, i) => [i + 1, p.bucketId, p.name || '', p.parentage || '', (p.surveys||[]).join(', '), p.rowCount, '', '']);
+  const columnStyles = isAadhaar
+    ? {
+        0: { cellWidth: 10, halign: 'center' },
+        1: { cellWidth: 14 },
+        2: { cellWidth: 14 },
+        3: { cellWidth: 22 },
+        4: { cellWidth: 42 },
+        5: { cellWidth: 45 },
+        6: { cellWidth: 18 },
+        7: { cellWidth: 20 },
+        8: { cellWidth: 45 },
+      }
+    : {
+        0: { cellWidth: 12, halign: 'center' },
+        1: { cellWidth: 22 },
+        2: { cellWidth: 42 },
+        3: { cellWidth: 42 },
+        4: { cellWidth: 50 },
+        5: { cellWidth: 14, halign: 'center' },
+        6: { cellWidth: 22 },
+        7: { cellWidth: 60 },
+      };
+  const title = isAadhaar
+    ? `AGRISTACK — AADHAAR SEEDING (POST-PRUNE)  |  Village: ${v.village}  |  Tehsil: ${v.tehsil}  |  District: Bandipora`
+    : `District: Bandipora  |  Tehsil: ${v.tehsil}  |  Village: ${v.village}`;
 
   doc.autoTable({
-    head: [['S.No.','Bucket ID','Name','Parentage','Survey Nos','#Rows','Status','Reason for Pendency']],
-    body,
-    startY: 22,
-    theme: 'grid',
+    head, body, startY: 22, theme: 'grid',
     headStyles: { fillColor: [238,242,247], textColor: 20, fontStyle: 'bold', halign: 'center' },
     styles: { fontSize: 8, cellPadding: 2, valign: 'top', minCellHeight: 8 },
-    columnStyles: {
-      0: { cellWidth: 12, halign: 'center' },
-      1: { cellWidth: 22 },
-      2: { cellWidth: 42 },
-      3: { cellWidth: 42 },
-      4: { cellWidth: 50 },
-      5: { cellWidth: 14, halign: 'center' },
-      6: { cellWidth: 22 },
-      7: { cellWidth: 60 },
-    },
-    didDrawPage: (data) => {
+    columnStyles,
+    didDrawPage: () => {
       doc.setFontSize(11); doc.setFont(undefined, 'bold');
-      doc.text(`District: Bandipora  |  Tehsil: ${v.tehsil}  |  Village: ${v.village}`, 148, 14, { align: 'center' });
+      doc.text(title, 148, 14, { align: 'center' });
       doc.setFontSize(9); doc.setFont(undefined, 'normal');
       doc.text('Verification Sheet — Landholder Aadhaar Seeding', 148, 19, { align: 'center' });
     },
