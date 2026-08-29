@@ -1,1206 +1,1622 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>Village Bucket Verification Sheet Generator — v-next</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+<meta charset="utf-8">
+<title>Village Person Extractor — Bandipora</title>
 <style>
   :root {
-    --bg: #f5f7fa;
-    --card: #ffffff;
-    --border: #d5dae2;
-    --text: #1a202c;
-    --muted: #6b7280;
-    --accent: #2b6cb0;
-    --accent-hover: #234e7d;
-    --danger: #c53030;
-    --danger-hover: #9b2323;
-    --warn-bg: #fff8e1;
-    --warn-border: #f0c674;
-    --dup-bg: #fef3f2;
-    --dup-border: #f9b8b3;
-    --ok-bg: #edf7ee;
-    --ok-border: #a5d6a7;
-    --header-bg: #eef2f7;
+    --green: #C8E6C9;
+    --pink:  #FFCDD2;
+    --red:   #E53935;
+    --bg:    #FAFAF7;
+    --ink:   #1F2937;
+    --line:  #D6D3C7;
+    --accent:#0F766E;
   }
   * { box-sizing: border-box; }
   body {
-    margin: 0; padding: 24px;
+    margin: 0;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    background: var(--bg); color: var(--text);
+    background: var(--bg);
+    color: var(--ink);
+    line-height: 1.45;
+  }
+  header {
+    padding: 28px 32px 20px;
+    border-bottom: 1px solid var(--line);
+    background: white;
+  }
+  header h1 {
+    margin: 0 0 4px 0;
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+  header p {
+    margin: 0;
+    font-size: 13px;
+    color: #6B7280;
+  }
+  main {
+    padding: 24px 32px 60px;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+  section { margin-bottom: 28px; }
+  section h2 {
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #6B7280;
+    font-weight: 600;
+    margin: 0 0 12px 0;
+  }
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 14px;
+    align-items: end;
+    padding: 20px;
+    background: white;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+  }
+  .field label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: #4B5563;
+    margin-bottom: 4px;
+  }
+  .field input[type="text"],
+  .field input[type="file"] {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid var(--line);
+    border-radius: 4px;
     font-size: 14px;
+    background: var(--bg);
   }
-  h1 { margin: 0 0 4px; font-size: 22px; }
-  .subtitle { color: var(--muted); margin-bottom: 20px; }
-  .card {
-    background: var(--card); border: 1px solid var(--border);
-    border-radius: 8px; padding: 20px; margin-bottom: 18px;
+  .field input[type="text"][readonly] {
+    background: #EEF2E9;
+    color: #6B7280;
   }
-  .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
-  label { font-weight: 600; margin-right: 6px; }
-  input[type=text], select {
-    padding: 6px 10px; border: 1px solid var(--border); border-radius: 4px;
-    font-size: 14px; font-family: inherit;
+  .actions {
+    grid-column: 1 / -1;
+    display: flex;
+    gap: 10px;
+    margin-top: 6px;
   }
-  input[type=file] { padding: 6px; }
+  .radio-group {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    padding: 6px 0;
+  }
+  .radio {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    cursor: pointer;
+    font-weight: normal;
+  }
+  .radio input[type="radio"] {
+    margin: 0;
+    cursor: pointer;
+  }
   button {
-    padding: 8px 16px; border: 1px solid var(--accent); background: var(--accent);
-    color: white; border-radius: 4px; cursor: pointer; font-size: 14px; font-family: inherit;
+    padding: 10px 18px;
+    border: none;
+    border-radius: 4px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    background: var(--accent);
+    color: white;
   }
-  button:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
-  button.secondary { background: white; color: var(--accent); }
-  button.secondary:hover { background: var(--header-bg); color: var(--accent-hover); }
-  button.danger { background: var(--danger); border-color: var(--danger); }
-  button.danger:hover { background: var(--danger-hover); border-color: var(--danger-hover); }
-  button.small { padding: 4px 10px; font-size: 13px; }
-  button:disabled { opacity: 0.5; cursor: not-allowed; }
-  table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 13px; }
-  th, td { padding: 6px 8px; border: 1px solid var(--border); text-align: left; vertical-align: top; }
-  th { background: var(--header-bg); font-weight: 600; }
-  tr.dup-row { background: var(--dup-bg); }
-  tr.nonhuman-row { background: var(--warn-bg); }
-  tr.deleted-row { opacity: 0.4; text-decoration: line-through; }
-  .file-config { margin-top: 12px; padding: 10px; border: 1px solid var(--border); border-radius: 4px; }
-  .file-config .row { margin-top: 6px; }
-  .tab-bar {
-    display: flex; gap: 4px; border-bottom: 2px solid var(--border);
-    margin-bottom: 16px; flex-wrap: wrap;
+  button:disabled {
+    background: #9CA3AF;
+    cursor: not-allowed;
   }
-  .tab-btn {
-    padding: 8px 14px; background: transparent; color: var(--text);
-    border: 1px solid transparent; border-bottom: none; border-radius: 4px 4px 0 0;
-    cursor: pointer; font-size: 13px;
+  button.secondary {
+    background: white;
+    color: var(--ink);
+    border: 1px solid var(--line);
   }
-  .tab-btn:hover { background: var(--header-bg); }
-  .tab-btn.active { background: white; border-color: var(--border); border-bottom: 2px solid white; margin-bottom: -2px; color: var(--accent); font-weight: 600; }
-  .group-card {
-    border: 1px solid var(--border); border-radius: 6px; margin: 10px 0;
-    overflow: hidden;
+  .legend {
+    display: flex;
+    gap: 20px;
+    padding: 14px 18px;
+    background: white;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    font-size: 13px;
+    flex-wrap: wrap;
   }
-  .group-header {
-    background: var(--header-bg); padding: 10px 14px;
-    display: flex; justify-content: space-between; align-items: center;
-    cursor: pointer; user-select: none;
+  .legend-item { display: flex; align-items: center; gap: 8px; }
+  .swatch {
+    width: 18px; height: 18px;
+    border-radius: 3px;
+    border: 1px solid rgba(0,0,0,0.1);
   }
-  .group-header.nonhuman { background: var(--warn-bg); border-bottom: 1px solid var(--warn-border); }
-  .group-header.similar { background: var(--dup-bg); border-bottom: 1px solid var(--dup-border); }
-  .group-header .actions button { margin-left: 6px; }
-  .group-body { padding: 8px 12px; }
-  .group-body.collapsed { display: none; }
+  .swatch.green { background: var(--green); }
+  .swatch.pink  { background: var(--pink); }
+  .swatch.red   { background: var(--red); }
   .stats {
-    display: flex; gap: 14px; flex-wrap: wrap; margin: 10px 0;
-    font-size: 13px; color: var(--muted);
+    display: flex;
+    gap: 24px;
+    padding: 12px 18px;
+    background: white;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    font-size: 13px;
+    margin-top: 10px;
   }
-  .stat-pill {
-    background: var(--header-bg); padding: 4px 10px; border-radius: 999px;
+  .stats span b { color: var(--accent); }
+  .table-wrap {
+    overflow-x: auto;
+    background: white;
+    border: 1px solid var(--line);
+    border-radius: 6px;
   }
-  .stat-pill strong { color: var(--text); }
-  .section-header {
-    display: flex; justify-content: space-between; align-items: center;
-    margin: 20px 0 8px; padding-bottom: 6px; border-bottom: 1px solid var(--border);
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
   }
-  .section-header h3 { margin: 0; font-size: 16px; }
-  .checkbox-cell { width: 32px; text-align: center; }
-  .nowrap { white-space: nowrap; }
-  .small-muted { color: var(--muted); font-size: 12px; }
-  .status-log {
-    background: #f8fafc; border: 1px solid var(--border); border-radius: 4px;
-    padding: 8px 12px; font-family: ui-monospace, "SF Mono", monospace;
-    font-size: 12px; max-height: 200px; overflow-y: auto;
-    margin-top: 12px; white-space: pre-wrap;
+  thead th {
+    background: #F3F1EA;
+    padding: 10px 12px;
+    text-align: left;
+    font-weight: 600;
+    border-bottom: 1px solid var(--line);
+    position: sticky; top: 0;
+    white-space: nowrap;
   }
-  .toolbar {
-    display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px;
-    padding: 10px; background: var(--header-bg); border-radius: 6px;
+  tbody td {
+    padding: 8px 12px;
+    border-bottom: 1px solid #EEECDF;
+    vertical-align: top;
   }
-  .master-actions { margin: 16px 0; display: flex; gap: 10px; flex-wrap: wrap; }
-  .level-btn {
-    padding: 6px 14px; background: white; color: var(--text);
-    border: 1px solid var(--border); border-radius: 4px; cursor: pointer;
-    font-size: 13px; font-family: inherit;
+  tbody tr.khewat { background: var(--green); }
+  tbody tr.khata  { background: var(--pink); }
+  tbody td.dup {
+    background: var(--red) !important;
+    color: white;
+    font-weight: 700;
   }
-  .level-btn:hover { background: var(--header-bg); }
-  .level-btn.active {
-    background: var(--accent); color: white; border-color: var(--accent); font-weight: 600;
+  .msg {
+    padding: 12px 16px;
+    border-radius: 4px;
+    font-size: 13px;
+    margin-top: 10px;
+  }
+  .msg.err  { background: #FEE2E2; color: #991B1B; border: 1px solid #FCA5A5; }
+  .msg.ok   { background: #DCFCE7; color: #166534; border: 1px solid #86EFAC; }
+  .msg.info { background: #E0F2FE; color: #075985; border: 1px solid #7DD3FC; }
+  #preview-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
   }
 </style>
 </head>
 <body>
 
-<h1>Village Verification Sheet Generator</h1>
-<div class="subtitle">
-  Handles two input formats: <strong>AgriStack Village Wise Bucket Data</strong> (BucketId/OwnerName/…) and <strong>Aadhaar Collection sheet</strong> (S.No/Khewat/Khata/Khasra/Name/Parentage/…). Format is auto-detected per file. Fuzzy name matching, non-human entity grouping, and flexible per-row deletion.
-</div>
+<header>
+  <h1>Village Person Extractor</h1>
+  <p>Reads a Jamabandi Excel and lists every person mentioned in Khewat and Khata columns, with source colour-coding.</p>
+</header>
 
-<!-- ================= STEP 1: UPLOAD ================= -->
-<div class="card">
-  <h3 style="margin-top:0">1. Upload files</h3>
-  <div class="row">
-    <input type="file" id="file-input" multiple accept=".xlsx,.xls">
-    <span class="small-muted">Select one or more "Village Wise Bucket Data" .xlsx files.</span>
-  </div>
-  <div id="file-configs"></div>
-</div>
+<main>
 
-<!-- ================= STEP 2: SETTINGS ================= -->
-<div class="card" id="settings-card" style="display:none;">
-  <h3 style="margin-top:0">2. Detection settings</h3>
-  <div class="row">
-    <label>Fuzzy grouping:</label>
-    <input type="range" id="fuzzy-slider" min="0" max="10" step="1" value="0" style="width:260px;">
-    <span id="fuzzy-slider-val" style="min-width:70px; display:inline-block;"><strong>0</strong> (off)</span>
-    <span class="small-muted">0 = no grouping. Slide right for more tolerance. Below each group card you'll see similarity scores so you can see why the tool clustered rows.</span>
-  </div>
-  <div class="row" style="margin-top:8px;">
-    <label><input type="checkbox" id="detect-nonhuman" checked> Detect non-human entities</label>
-    <label style="margin-left:16px;"><input type="checkbox" id="cluster-fuzzy" checked> Cluster fuzzy-similar names</label>
-  </div>
-  <div class="row" style="margin-top:12px;">
-    <button id="process-btn">Process files</button>
-    <button class="secondary" id="reset-btn">Reset</button>
-  </div>
-  <div id="status-log" class="status-log" style="display:none;"></div>
-</div>
+  <section id="form-section">
+    <h2>Input</h2>
+    <div class="form-grid">
+      <div class="field">
+        <label for="village">Village Name <span style="font-weight:normal;color:#9CA3AF;">(auto from filename if multiple files)</span></label>
+        <input type="text" id="village" placeholder="e.g. Malikpora — leave blank for multi-file">
+      </div>
+      <div class="field">
+        <label for="tehsil">Tehsil</label>
+        <input type="text" id="tehsil" placeholder="e.g. Sumbal">
+      </div>
+      <div class="field">
+        <label for="district">District</label>
+        <input type="text" id="district" value="Bandipora" readonly>
+      </div>
+      <div class="field" style="grid-column: 1 / -1;">
+        <label for="file">Jamabandi Excel — one or many (.xlsx)</label>
+        <input type="file" id="file" accept=".xlsx,.xls" multiple>
+      </div>
+      <div class="field" style="grid-column: 1 / -1;">
+        <label>Extract</label>
+        <div class="radio-group">
+          <label class="radio">
+            <input type="radio" name="mode" value="both" checked>
+            <span>Both Khewat owners &amp; Khata cultivators</span>
+          </label>
+          <label class="radio">
+            <input type="radio" name="mode" value="khewat-only">
+            <span>Khewat owners only (ignore Khata)</span>
+          </label>
+        </div>
+      </div>
+      <div class="actions">
+        <button id="go">Extract Persons</button>
+        <button class="secondary" id="clear" type="button">Clear</button>
+      </div>
+    </div>
+    <div id="status"></div>
+  </section>
 
-<!-- ================= STEP 3: REVIEW ================= -->
-<div id="review-section" style="display:none;">
-  <div class="card">
-    <h3 style="margin-top:0">3. Review and prune</h3>
-    <div id="tab-bar" class="tab-bar"></div>
-    <div id="tab-content"></div>
-  </div>
-</div>
+  <section id="result" hidden>
+    <h2>Colour Key</h2>
+    <div class="legend">
+      <div class="legend-item"><span class="swatch green"></span> Owner mentioned in Khewat</div>
+      <div class="legend-item"><span class="swatch pink"></span> Cultivator fetched from Khata</div>
+      <div class="legend-item"><span class="swatch red"></span> Duplicate name (appears more than once)</div>
+    </div>
+    <div class="stats" id="stats"></div>
 
-<!-- ================= STEP 4: DOWNLOAD ================= -->
-<div id="download-section" class="card" style="display:none;">
-  <h3 style="margin-top:0">4. Download</h3>
-  <div class="row">
-    <button id="dl-current-xlsx">Download current village (Excel)</button>
-    <button id="dl-current-pdf" class="secondary">Download current village (PDF)</button>
-    <button id="dl-all-zip" class="secondary" style="margin-left:20px;">Download all villages (ZIP)</button>
-  </div>
-</div>
+    <div id="preview-controls" style="margin-top:24px;">
+      <h2 style="margin:0;">Extracted Persons</h2>
+      <div style="display:flex; gap:10px; flex-wrap:wrap;">
+        <button id="purge-all" class="secondary" title="Drop rows where Name + Parentage + Caste all match — keep earliest">Purge Duplicates</button>
+        <button id="purge-within-khewat" class="secondary" title="Drop same-name rows within the same Khewat — keep earliest">Purge Within-Khewat</button>
+        <button id="dl-xlsx">Download Excel</button>
+        <button id="dl-pdf">Download PDF</button>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table id="preview">
+        <thead>
+          <tr>
+            <th>S.No.</th>
+            <th>Khewat No.</th>
+            <th>Khata No.</th>
+            <th>Name</th>
+            <th>Parentage</th>
+            <th>Caste</th>
+            <th>Residence</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 
 <script>
-/* ============================================================
-   STATE
-   ============================================================ */
-const STATE = {
-  files: [],          // [{file, tehsil, village}]
-  villages: [],       // [{key, tehsil, village, bucketId?, rows: [personRow], nonHumanGroups: [], similarGroups: []}]
-  activeTab: 0,
-};
-const TEHSILS = ['Bandipora','Sumbal','Aloosa','Hajin','Kaloosa','Ajas','Gurez','Tulail'];
+/* =========================================================================
+   PARSER
+   ========================================================================= */
 
-/* ============================================================
-   NON-HUMAN PATTERNS
-   ============================================================ */
-const NON_HUMAN_PATTERNS = [
-  { key: 'shamilat',    label: 'Shamilat / Common Land',
-    rx: /\bsham[il]{1,2}[la]{1,2}t\b/i },
-  { key: 'sarkar',      label: 'Sarkar / Government / State',
-    rx: /\bsarkar\b|\bgovern?ment\b|\bstate\b|\bgovt\b/i },
-  { key: 'maqbooza',    label: 'Maqbooza (Malikaan / Mahkama)',
-    rx: /\bma[kq]b[ou]+(?:z[ae]h?|h)\b/i },
-  { key: 'matwaqah',    label: 'Matwaqah / Matroka',
-    rx: /\bmat[wr]?aq?ah?\b|\bmatr?[ou]ka\b/i },
-  { key: 'khudkasht',   label: 'Khud Kasht',
-    rx: /\bkhud[\s-]?kasht\b/i },
-  { key: 'sharaam',     label: 'Shara Aam / Common Path',
-    rx: /\bsha+r+h?[\s-]?e?[\s-]?a[am]+\b/i },
-  { key: 'wakf',        label: 'Wakf / Trust / Committee / Department',
-    rx: /\bwa[kq]f\b|\btrust\b|\bcommittee\b|\bmahkama+\b|\bdepart?ment\b|\bdept\b|\bboard\b/i },
-  { key: 'masjid',      label: 'Masjid / Religious Institution',
-    rx: /\bmasjid\b|\bmosque\b|\bdargah\b|\bziarat\b/i },
-  { key: 'ahalislam',   label: 'Ahal-e-Islam / Community Land',
-    rx: /\bah[al]{1,2}[iy]?\s+(?:islam|assalam|salaam?)\b|\bahli\s+islam\b/i },
-  { key: 'charai',      label: 'Charai / Grazing Land',
-    rx: /\bchar[aeiy]{2,6}\b/i },
-  { key: 'mufeedaam',   label: 'Mufeed Aam / Public Utility',
-    rx: /\bmuf[ie]+d\b/i },
-  { key: 'aabadi',      label: 'Aabadi / Habitation',
-    rx: /\ba+badi\b/i },
-  { key: 'nil',         label: 'NIL / Empty / N/A',
-    rx: /^(nil|null|none|na|n\/a|#n\/a|-+|\s*)$/i },
+// Relation words that separate Name from Parentage.
+// Longer/multi-word forms MUST come first so the regex doesn't stop at the shorter one.
+const RELATION_WORDS = [
+  "daughter in law", "son in law",
+  "granddaughter", "grandson",
+  "pisaran", "pisar", "pisr",
+  "dukhtaran", "dukhter", "dukhtar",
+  "bewah", "bewa", "byuh",
+  "zauja", "zoja",
+  "w/o", "d/o", "s/o"
 ];
+const RELATION_RE = new RegExp(
+  "\\b(" + RELATION_WORDS.map(w => w.replace(/\//g, "\\/")).join("|") + ")\\b",
+  "i"
+);
 
-function detectNonHuman(name, parentage) {
-  const combined = `${name || ''} ${parentage || ''}`.trim();
-  for (const p of NON_HUMAN_PATTERNS) {
-    if (p.rx.test(combined)) return p;
-    // for the NIL pattern also check individually
-    if (p.key === 'nil') {
-      if (p.rx.test((name||'').trim()) && p.rx.test((parentage||'').trim())) return p;
+// Anything from "sakin..." onward is the residence. Keep as-is (incl. Sakindeh).
+// Matches: "Sakindeh" / "Sakinandeh" / "Sakina" (compound), OR "Sakin Sumbal" (two-word).
+const RESIDENCE_RE = /\bsakin(?:[a-z]+|\s+[a-zA-Z][a-zA-Z\-']*)?/i;
+
+// Fractional shares like "2/7", "1/7", "3/8" — stripped from cell body.
+// Word-boundary guards it from touching "S/O" (letters, not digits).
+const FRACTION_RE = /\b\d+\/\d+\b/g;
+
+// Caste marker — "qaum" or "kaum" followed by the caste word.
+// The following word is EXTRACTED as caste; the whole "qaum/kaum <word>"
+// is stripped from the cell so it doesn't pollute parent names.
+const CASTE_MARKER_RE = /\b(?:qaum|kaum)\s+([a-zA-Z][a-zA-Z\-']*)/i;
+const CASTE_STRIP_RE  = /\b(?:qaum|kaum)\s+\S+/gi;
+
+// Common J&K tribe / caste tokens — used to trim trailing surname off Parentage.
+const TRIBES = new RegExp(
+  "\\b(dar|bhat|sofi|ganaie|ganie|wani|malik|mir|sheikh|khan|rather|magray|" +
+  "hurra|hurrah|butt|mattoo|kaul|kachroo|shah|thakur|pandit|bafanda|lone|" +
+  "peer|beigh|beg|mughal|qureshi|ansari|hakeem)\\b",
+  "i"
+);
+
+// Whole-cell hard-skip tokens (cell is essentially this — no real persons).
+const SKIP_TOKENS = /\b(shara\s*aam|makbuza\s*mahkama|shamlat)\b/i;
+
+// Trailing / inline noise annotations to soft-strip.
+// Removed from cell body — cell continues to be parsed.
+//   matroka/matuqah/matwaqah = "left by deceased"
+//   khud kasht / khudkasht    = "self-cultivating" (status flag, not a person)
+//   mushtari                  = "buyer" (transaction marker suffix)
+//   hissa dar / hissa daran   = "share-holder" (transaction marker)
+const NOISE_STRIP_RE = /\b(matroka|matruka|matuqah|matwaqah|malik\s*matwaqah|khud\s*kasht|khudkasht|mushtari|hissa\s*dar[a-z]*)\b/gi;
+
+// Share unit: fraction (1/4, 2/7) OR one area token (11 kanal, 17 marla, etc.)
+// Used for share-driven person segmentation. Adjacent matches merge into one
+// "share block" when segmenting.
+const SHARE_UNIT_RE = /\b\d+\/\d+\b|\b\d+(?:\.\d+)?\s*(?:kanals?|canals?|marlas?|maralas?|marabba\s*foots?|marabbafoots?|sarsahis?|ghumaos?|acres?|hectares?)\b/gi;
+
+// Transaction verbs — the current holder is the person AFTER the verb.
+//   "ba haq"  — Khata cells (bay ba haq X = sold in favor of X)
+//   baya      — Khewat cells (variant of bay, appears before the buyer)
+//   bay, hiba, hibba, tabadala, intiqal, farogh, intiqaal — general
+const BA_HAQ_RE = /\bba\s*haq\b/i;
+const TXN_VERBS = /\b(baya|bay|hibba|hiba|tabadala|intiqal|farogh|intiqaal)\b/i;
+
+// Donation split marker: "hissa daran wahiban" (share-holders of the donee).
+// When an owner cell contains this, everything BEFORE is the original owners
+// (Khewat green), everything AFTER is the donees (treated as Khata pink).
+// Widened to catch spelling variants: wahiban, wahb, wahab, waahb.
+const HISSA_WAHIBAN_RE = /\bhissa\s*[a-z]*\s+wa[a-z]{1,6}b[a-z]*\b/i;
+const HISSA_WAHIBAN_GLOBAL_RE = /\bhissa\s*[a-z]*\s+wa[a-z]{1,6}b[a-z]*\b/gi;
+
+// "Mahub <word>" — "in favor of" style transaction marker. Used together
+// with the wahiban count as a multi-transaction detector: if either kind of
+// marker appears TWO OR MORE times in one cell, we skip the cell entirely
+// (auto-parsing chained transactions is too error-prone).
+const MAHUB_GLOBAL_RE = /\bmahub\s+\w+\b/gi;
+
+// Person separators inside a multi-owner cell.
+const PERSON_SEP = /\s+(?:and|aur|wa)\s+|\s*,\s*/i;
+
+/**
+ * Strip [Recorded share x/y] and similar bracket annotations from a name string.
+ */
+function stripAnnotations(s) {
+  return s.replace(/\[[^\]]*\]/g, " ").replace(/\s+/g, " ").trim();
+}
+
+/**
+ * Strip area/share tokens like "11 kanal", "17 marla", "46 marabba foot", "3 sarsahi".
+ * These are share amounts, not part of names.
+ */
+const AREA_TOKEN_RE = /\b\d+(?:[.\/]\d+)?\s*(?:kanals?|canals?|marlas?|maralas?|marabba\s*foots?|marabbafoots?|sarsahis?|ghumaos?|acres?|hectares?)\b/gi;
+function stripAreaTokens(s) {
+  return s.replace(AREA_TOKEN_RE, " ").replace(/\s+/g, " ").trim();
+}
+
+const titleCase = str => String(str || "").replace(/\b\w+/g, w =>
+  w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()
+);
+
+/**
+ * Parse ONE chunk (single person, area tokens already stripped) into
+ * { name, relation, parent }. Chunks with no relation word return relation:"".
+ */
+function parseChunk(chunk) {
+  const trimmed = chunk.trim();
+  if (!trimmed) return null;
+
+  const relMatch = trimmed.match(RELATION_RE);
+  if (!relMatch) {
+    return { name: trimmed, relation: "", parent: "" };
+  }
+  const name = trimmed.slice(0, relMatch.index).trim();
+  let parent = trimmed.slice(relMatch.index + relMatch[0].length).trim();
+
+  // Truncate parent at next relation word (handles doubled "byuh asmal byuh asmal")
+  const secondRel = parent.match(RELATION_RE);
+  if (secondRel) parent = parent.slice(0, secondRel.index).trim();
+
+  // Truncate parent at first tribe/caste token
+  const tMatch = parent.match(TRIBES);
+  if (tMatch) parent = parent.slice(0, tMatch.index).trim();
+
+  parent = parent.replace(/^[,;\s]+|[,;\s]+$/g, "").trim();
+  return { name, relation: relMatch[0], parent };
+}
+
+/**
+ * Core cell parser — handles chunk splitting, relation chain propagation,
+ * parent cascade, caste + residence extraction. Used by both Khewat and
+ * Khata paths.
+ *
+ * Segmentation is two-level:
+ *   1. Split cell by commas into segments.
+ *   2. Within each segment, if share tokens (fractions or area amounts) are
+ *      present, use share boundaries to detect multiple persons
+ *      (e.g. "gani 1/4 pisar aziz subhan 1/8" = two persons: Gani + Subhan).
+ *      If no shares, parse the whole segment as one person (legacy path).
+ */
+function parseCellChunks(cell) {
+  if (!cell) return [];
+  let s = stripAnnotations(String(cell));
+  if (!s || SKIP_TOKENS.test(s)) return [];
+
+  // --- Whole-cell extractions ---
+
+  // Residence: only if "sakin..." is explicitly present.
+  let residence = "";
+  const resMatch = s.match(RESIDENCE_RE);
+  if (resMatch) residence = resMatch[0].trim();
+  s = s.replace(new RegExp(RESIDENCE_RE.source, "gi"), " ").replace(/\s+/g, " ").trim();
+
+  // Caste: "qaum <caste>" or "kaum <caste>" — extract the word after.
+  let caste = "";
+  const casteMatch = s.match(CASTE_MARKER_RE);
+  if (casteMatch) caste = casteMatch[1];
+  s = s.replace(CASTE_STRIP_RE, " ").replace(/\s+/g, " ").trim();
+
+  // Soft-strip noise tokens (matroka/matuqah/matwaqah = deceased/left markers)
+  s = s.replace(NOISE_STRIP_RE, " ").replace(/\s+/g, " ").trim();
+  if (!s) return [];
+
+  // --- Segment by commas, then by shares within each segment ---
+
+  const segments = s.split(/\s*,\s*/).map(x => x.trim()).filter(Boolean);
+  const chunks = [];
+  for (const seg of segments) {
+    const segChunks = parseShareSegment(seg);
+    chunks.push(...segChunks);
+  }
+  if (!chunks.length) return [];
+
+  // --- Pass 1: PARENT CASCADE ---
+  // A chunk with a relation but no explicit parent inherits the parent from
+  // the nearest chunk that names one (forward first, then backward).
+  for (let i = 0; i < chunks.length; i++) {
+    if (chunks[i].relation && !chunks[i].parent) {
+      for (let j = i + 1; j < chunks.length; j++) {
+        if (chunks[j].parent) { chunks[i].parent = chunks[j].parent; break; }
+      }
+      if (!chunks[i].parent) {
+        for (let j = i - 1; j >= 0; j--) {
+          if (chunks[j].parent) { chunks[i].parent = chunks[j].parent; break; }
+        }
+      }
     }
   }
-  // Additional: if BOTH name and parentage are nil/empty → nil
-  if (isMissing(name) && isMissing(parentage)) {
-    return NON_HUMAN_PATTERNS.find(p => p.key === 'nil');
+
+  // --- Pass 2: RELATION CHAIN PROPAGATION ---
+  // A chunk with no relation inherits relation+parent from the NEXT chunk
+  // that has a relation. Jamabandi convention: relation at end of chain
+  // applies backward to all preceding names in that chain.
+  for (let i = 0; i < chunks.length; i++) {
+    if (!chunks[i].relation) {
+      for (let j = i + 1; j < chunks.length; j++) {
+        if (chunks[j].relation) {
+          chunks[i].relation = chunks[j].relation;
+          chunks[i].parent = chunks[j].parent;
+          break;
+        }
+      }
+    }
+  }
+
+  // --- Emit ---
+  return chunks.map(c => {
+    const name = c.name.replace(/[,;]+$/, "").trim();
+    if (!name) return null;
+    return {
+      name: titleCase(name),
+      parentage: titleCase(c.parent),
+      residence: residence ? titleCase(residence) : "",
+      caste: caste ? titleCase(caste) : ""
+    };
+  }).filter(Boolean);
+}
+
+/**
+ * Parse ONE comma-separated segment.
+ *   - If shares (fractions or area tokens) are present: walk share boundaries.
+ *     Each person = [name] [share] [optional: relation + parent], with the
+ *     NEXT person's name beginning right after the previous person's parent
+ *     (or right after the share, if there's no relation).
+ *   - If no shares: fall back to parseChunk on the whole segment.
+ * Returns an array of raw chunk objects: { name, relation, parent }.
+ */
+function parseShareSegment(seg) {
+  // Detect share positions
+  const rawShares = [];
+  const re = new RegExp(SHARE_UNIT_RE.source, "gi");
+  let m;
+  while ((m = re.exec(seg)) !== null) {
+    rawShares.push({ start: m.index, end: m.index + m[0].length });
+  }
+
+  if (rawShares.length === 0) {
+    // Legacy path — no shares, one person per segment
+    const c = parseChunk(seg);
+    return c ? [c] : [];
+  }
+
+  // Consolidate adjacent shares (only whitespace between) into single blocks —
+  // "11 kanal 17 marala 46 marabba foot" is ONE share, three matched tokens.
+  const shares = [rawShares[0]];
+  for (let i = 1; i < rawShares.length; i++) {
+    const prev = shares[shares.length - 1];
+    const gap = seg.slice(prev.end, rawShares[i].start).trim();
+    if (!gap) prev.end = rawShares[i].end;
+    else shares.push(rawShares[i]);
+  }
+
+  const out = [];
+  let cursor = 0;
+  for (let i = 0; i < shares.length; i++) {
+    const share = shares[i];
+    const namePart = seg.slice(cursor, share.start).trim();
+
+    if (!namePart) {
+      cursor = share.end;
+      continue;
+    }
+
+    // Post-share text runs to the next share's start (or end of segment)
+    const postEnd = i + 1 < shares.length ? shares[i + 1].start : seg.length;
+    const rawPost = seg.slice(share.end, postEnd);
+
+    // If the namePart already contains a relation word (Rehman S/O style —
+    // relation comes BEFORE share), parseChunk it and skip post-share parsing.
+    // The post-share text then belongs to the next person's name.
+    if (RELATION_RE.test(namePart)) {
+      const inner = parseChunk(namePart);
+      if (inner) out.push(inner);
+      cursor = share.end;
+      continue;
+    }
+
+    // Otherwise, look for relation+parent AFTER the share (gani 1/4 pisar aziz
+    // subhan 1/8 style — relation applies to previous name, parent is next word,
+    // then the following name starts the next person).
+    let relation = "";
+    let parent = "";
+    let consumed = 0;
+    const relMatch = rawPost.match(new RegExp(RELATION_RE.source, "i"));
+    if (relMatch && rawPost.slice(0, relMatch.index).trim() === "") {
+      relation = relMatch[0];
+      const afterRelStart = relMatch.index + relMatch[0].length;
+      const afterRel = rawPost.slice(afterRelStart);
+      // Parent width: 2 words if this is the LAST share in the segment (nothing
+      // else follows, so trailing text is name continuation like "Jalal Uddin"),
+      // else 1 word — otherwise a 2-word grab like "aziz subhan" would eat the
+      // next person's name.
+      const isLastShare = i === shares.length - 1;
+      const parentRe = isLastShare
+        ? /^\s*([a-zA-Z][a-zA-Z\-']*(?:\s+[a-zA-Z][a-zA-Z\-']*)?)/
+        : /^\s*([a-zA-Z][a-zA-Z\-']*)/;
+      const parentMatch = afterRel.match(parentRe);
+      if (parentMatch) {
+        let candidate = parentMatch[1];
+        // Trim candidate at first tribe token (e.g. "Abdul Rashid Wani" → "Abdul Rashid")
+        const tMatch = candidate.match(TRIBES);
+        if (tMatch) candidate = candidate.slice(0, tMatch.index).trim();
+        parent = candidate;
+        consumed = afterRelStart + parentMatch[0].length;
+      } else {
+        consumed = afterRelStart;
+      }
+    }
+
+    cursor = share.end + consumed;
+    out.push({ name: namePart, relation, parent });
+  }
+
+  return out;
+}
+
+/**
+ * Parse a Khewat cell — one or more owners, no transaction verbs.
+ */
+function parseKhewatCell(cell) {
+  return parseCellChunks(cell);
+}
+
+/**
+ * Parse a Khata cell — may contain transaction verbs. Return only CURRENT holder(s).
+ */
+function parseKhataCell(cell) {
+  if (!cell) return [];
+  const s = stripAnnotations(String(cell));
+  if (!s || SKIP_TOKENS.test(s)) return [];
+
+  // Slice to current holder = right side of "ba haq" (or txn verb if ba haq missing)
+  const bh = s.match(BA_HAQ_RE);
+  let target = s;
+  if (bh) {
+    target = s.slice(bh.index + bh[0].length).trim();
+  } else {
+    const tv = s.match(TXN_VERBS);
+    if (tv) target = s.slice(tv.index + tv[0].length).trim();
+  }
+  target = target.replace(/^(ne|ke|ko|se|ba)\s+/i, "").trim();
+
+  return parseCellChunks(target);
+}
+
+/* =========================================================================
+   EXCEL READER — header-name detection with fallback to fixed columns
+   ========================================================================= */
+
+const HEADER_PATTERNS = {
+  khewat:     /khewat|khataoni/i,
+  khata:      /khata\s*no|khata\s*number|\bkhata\b/i,
+  owner:      /owner|malik/i,
+  cultivator: /cultivator|muzarah|mazareen/i
+};
+
+/**
+ * Scan the first ~15 rows of a sheet to find the header row.
+ * Returns { headerRow: idx, cols: { khewat, khata, owner, cultivator } } or null.
+ */
+function detectHeaders(rows) {
+  for (let i = 0; i < Math.min(rows.length, 15); i++) {
+    const row = rows[i] || [];
+    const found = {};
+    row.forEach((cell, c) => {
+      const s = String(cell || "").trim();
+      if (!s) return;
+      // Owner has priority over generic "khata" match if it contains malik-ish
+      if (HEADER_PATTERNS.owner.test(s) && found.owner == null) found.owner = c;
+      else if (HEADER_PATTERNS.cultivator.test(s) && found.cultivator == null) found.cultivator = c;
+      else if (HEADER_PATTERNS.khewat.test(s) && found.khewat == null) found.khewat = c;
+      else if (HEADER_PATTERNS.khata.test(s) && found.khata == null) found.khata = c;
+    });
+    // Need at least owner + khewat to consider this a header row
+    if (found.owner != null && found.khewat != null) {
+      return { headerRow: i, cols: found };
+    }
   }
   return null;
 }
 
-function isMissing(v) {
-  if (v === null || v === undefined) return true;
-  const s = String(v).trim().toUpperCase();
-  return s === '' || s === 'NULL' || s === 'N/A' || s === 'NA' || s === 'NONE' || s === '#N/A' || s === '-';
+/**
+ * Fallback: fixed column indices from earlier generator.
+ * Owner Name = col 4, Cultivator Name = col 12, Khata No = col 15
+ * Khewat No — earlier chats reference multiple layouts; try col 2 first.
+ */
+const FALLBACK_COLS = { khewat: 2, khata: 15, owner: 4, cultivator: 12 };
+
+/**
+ * Normalise a Khewat number: if written as "1-1" (composite Khewat-Khataoni),
+ * take only the first part before the hyphen.
+ */
+function normalizeKhewat(k) {
+  if (!k) return "";
+  const s = String(k).trim();
+  const hyphen = s.indexOf("-");
+  return (hyphen >= 0 ? s.slice(0, hyphen) : s).trim();
 }
 
-/* ============================================================
-   NAME NORMALISATION + FUZZY MATCH
-   ============================================================ */
-function normalize(s) {
-  if (!s) return '';
-  let x = String(s);
-  // Strip Unicode weirdness: zero-width joiners, BOM, non-breaking / ideographic spaces
-  x = x.replace(/[\u200B-\u200D\uFEFF]/g, '');
-  x = x.replace(/[\u00A0\u3000]/g, ' ');
-  x = x.toLowerCase().trim();
-  // strip punctuation, keep spaces
-  x = x.replace(/[^\w\s]/g, ' ');
-  // expand common J&K abbreviations
-  const REPL = [
-    [/\bmoh?d\b\.?/g, 'mohammad'],
-    [/\bmuhd\b\.?/g, 'mohammad'],
-    [/\bmohammed\b/g, 'mohammad'],
-    [/\bmuhammad\b/g, 'mohammad'],
-    [/\bmuhammed\b/g, 'mohammad'],
-    [/\bgh\b\.?/g, 'ghulam'],
-    [/\bghulaam\b/g, 'ghulam'],
-    [/\babd\b\.?/g, 'abdul'],
-    [/\babdool\b/g, 'abdul'],
-    [/\brehman\b/g, 'rahman'],
-    [/\brehmaan\b/g, 'rahman'],
-    [/\brehamaan\b/g, 'rahman'],
-    [/\bahmed\b/g, 'ahmad'],
-    [/\bbasheer\b/g, 'bashir'],
-    [/\bhusa?in\b/g, 'hussain'],
-    [/\bhussein\b/g, 'hussain'],
-    [/\bshabir\b/g, 'shabbir'],
-    [/\bjabar\b/g, 'jabbar'],
-    [/\bmehdi\b/g, 'mahdi'],
-  ];
-  for (const [rx, rep] of REPL) x = x.replace(rx, rep);
-  // strip relation markers
-  x = x.replace(/\bs\s*o\b|\bd\s*o\b|\bw\s*o\b|\bson\s+of\b|\bdaughter\s+of\b|\bwife\s+of\b/g, ' ');
-  // collapse whitespace
-  x = x.replace(/\s+/g, ' ').trim();
-  return x;
+/**
+ * Normalise a Khata number: same rule as Khewat — "13-13" → "13".
+ * (Composite Khata-<suffix> — only the first part is required.)
+ */
+function normalizeKhata(k) {
+  if (!k) return "";
+  const s = String(k).trim();
+  const hyphen = s.indexOf("-");
+  return (hyphen >= 0 ? s.slice(0, hyphen) : s).trim();
 }
 
-// Jaro similarity
-function jaro(s1, s2) {
-  if (s1 === s2) return 1;
-  const len1 = s1.length, len2 = s2.length;
-  if (!len1 || !len2) return 0;
-  const matchDist = Math.max(0, Math.floor(Math.max(len1, len2) / 2) - 1);
-  const m1 = new Array(len1).fill(false);
-  const m2 = new Array(len2).fill(false);
-  let matches = 0;
-  for (let i = 0; i < len1; i++) {
-    const start = Math.max(0, i - matchDist);
-    const end = Math.min(i + matchDist + 1, len2);
-    for (let j = start; j < end; j++) {
-      if (m2[j]) continue;
-      if (s1[i] !== s2[j]) continue;
-      m1[i] = true; m2[j] = true; matches++; break;
-    }
-  }
-  if (!matches) return 0;
-  let t = 0, k = 0;
-  for (let i = 0; i < len1; i++) {
-    if (!m1[i]) continue;
-    while (!m2[k]) k++;
-    if (s1[i] !== s2[k]) t++;
-    k++;
-  }
-  t /= 2;
-  return ((matches / len1) + (matches / len2) + ((matches - t) / matches)) / 3;
+/**
+ * Derive a village name from an uploaded filename by stripping the extension.
+ * Underscores and hyphens are kept as-is.
+ */
+function villageFromFilename(fn) {
+  return String(fn || "").replace(/\.(xlsx|xls)$/i, "").trim() || "Village";
 }
 
-// Jaro-Winkler (bonus for shared prefix, up to 4 chars)
-function jaroWinkler(s1, s2) {
-  const j = jaro(s1, s2);
-  let prefix = 0;
-  const maxP = Math.min(4, s1.length, s2.length);
-  for (let i = 0; i < maxP; i++) {
-    if (s1[i] === s2[i]) prefix++; else break;
-  }
-  return j + prefix * 0.1 * (1 - j);
-}
-
-function similarity(name1, par1, name2, par2) {
-  const nameSim = jaroWinkler(name1, name2);
-  const parSim  = jaroWinkler(par1, par2);
-  // Both must clear the threshold — weight them equally
-  return { nameSim, parSim, min: Math.min(nameSim, parSim) };
-}
-
-// Levenshtein edit distance — counts single-char insertions, deletions, substitutions
-function levenshtein(a, b) {
-  const la = a.length, lb = b.length;
-  if (!la) return lb;
-  if (!lb) return la;
-  let prev = new Array(lb + 1), curr = new Array(lb + 1);
-  for (let j = 0; j <= lb; j++) prev[j] = j;
-  for (let i = 1; i <= la; i++) {
-    curr[0] = i;
-    for (let j = 1; j <= lb; j++) {
-      const cost = a[i-1] === b[j-1] ? 0 : 1;
-      curr[j] = Math.min(prev[j] + 1, curr[j-1] + 1, prev[j-1] + cost);
-    }
-    [prev, curr] = [curr, prev];
-  }
-  return prev[lb];
-}
-// Length-normalized Levenshtein similarity: 1 = identical, 0 = completely different
-function levSim(a, b) {
-  if (!a && !b) return 1;
-  if (!a || !b) return 0;
-  const maxLen = Math.max(a.length, b.length);
-  return 1 - levenshtein(a, b) / maxLen;
-}
-
-// Token-wise similarity using Levenshtein.
-// Better than Jaro-Winkler for this use case because it doesn't give a prefix bonus
-// that inflates the score of pairs like "raham" vs "rehman" (shared 'r' → JW 0.914, but LD 0.667).
-function tokenSim(a, b) {
-  const ta = (a || '').split(' ').filter(Boolean);
-  const tb = (b || '').split(' ').filter(Boolean);
-  if (!ta.length || !tb.length) return 0;
-
-  const [shorter, longer] = ta.length <= tb.length ? [ta, tb] : [tb, ta];
-  const used = new Set();
-  const pairScores = [];
-  for (const s of shorter) {
-    let bestIdx = -1, bestScore = 0;
-    for (let i = 0; i < longer.length; i++) {
-      if (used.has(i)) continue;
-      const j = levSim(s, longer[i]);
-      if (j > bestScore) { bestScore = j; bestIdx = i; }
-    }
-    if (bestIdx >= 0) used.add(bestIdx);
-    pairScores.push(bestScore);
-  }
-  const minPair = Math.min(...pairScores);
-  const unmatched = longer.length - shorter.length;
-  return Math.max(0, minPair - 0.05 * unmatched);
-}
-
-/* ============================================================
-   READ EXCEL
-   ============================================================ */
-function readXlsx(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = e => {
-      try {
-        const wb = XLSX.read(e.target.result, { type: 'array' });
-        const ws = wb.Sheets[wb.SheetNames[0]];
-        const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
-        resolve(rows);
-      } catch (err) { reject(err); }
-    };
-    reader.onerror = () => reject(reader.error);
-    reader.readAsArrayBuffer(file);
-  });
-}
-
-// Detect input file format. Returns {format, headerRow, cols}.
-// - 'bucket'  = AgriStack Village Wise Bucket Data (BucketId/OwnerName/IdentifierName/SurveyNumber/SubSurveyNumber)
-// - 'aadhaar' = Aadhaar Collection sheet (S.NO./KHEWAT/KHATA/KHASRA/NAME/PARENTAGE/TYPE/STATUS/REASON, headers on row 2, title on row 1)
-function detectFormat(rawRows) {
-  const normHeader = row => (row || []).map(c => String(c || '').trim().toLowerCase().replace(/[\s_.-]/g, ''));
-  const r0 = normHeader(rawRows[0]);
-  const r1 = normHeader(rawRows[1]);
-
-  const bucketHits = h => h.filter(x => ['bucketid','ownername','identifiername','surveynumber','subsurveynumber'].includes(x)).length;
-  const aadhaarHits = h => h.filter(x => ['sno','khewat','khata','khasra','name','parentage','type','status','reason'].includes(x)).length;
-
-  // Prefer row 0 if it has bucket-format headers
-  if (bucketHits(r0) >= 2) return { format: 'bucket', headerRow: 0, cols: mapBucketCols(rawRows[0]) };
-  // Else try row 1
-  if (bucketHits(r1) >= 2) return { format: 'bucket', headerRow: 1, cols: mapBucketCols(rawRows[1]) };
-  if (aadhaarHits(r1) >= 4) return { format: 'aadhaar', headerRow: 1, cols: mapAadhaarCols(rawRows[1]) };
-  if (aadhaarHits(r0) >= 4) return { format: 'aadhaar', headerRow: 0, cols: mapAadhaarCols(rawRows[0]) };
-  // Fallback: assume bucket at row 0
-  return { format: 'bucket', headerRow: 0, cols: mapBucketCols(rawRows[0]) };
-}
-
-function mapBucketCols(headerRow) {
-  const map = {};
-  (headerRow || []).forEach((h, i) => {
-    const k = String(h || '').trim().toLowerCase().replace(/[\s_.-]/g, '');
-    if (k === 'bucketid') map.bucketId = i;
-    if (k === 'ownername') map.ownerName = i;
-    if (k === 'identifiername') map.identifierName = i;
-    if (k === 'surveynumber') map.surveyNumber = i;
-    if (k === 'subsurveynumber') map.subSurveyNumber = i;
-  });
-  if (map.bucketId === undefined) map.bucketId = 0;
-  if (map.ownerName === undefined) map.ownerName = 1;
-  if (map.identifierName === undefined) map.identifierName = 2;
-  if (map.surveyNumber === undefined) map.surveyNumber = 3;
-  if (map.subSurveyNumber === undefined) map.subSurveyNumber = 4;
-  return map;
-}
-
-function mapAadhaarCols(headerRow) {
-  const map = {};
-  (headerRow || []).forEach((h, i) => {
-    const k = String(h || '').trim().toLowerCase().replace(/[\s_.-]/g, '');
-    if (k === 'sno') map.sNo = i;
-    if (k === 'khewat') map.khewat = i;
-    if (k === 'khata') map.khata = i;
-    if (k === 'khasra') map.khasra = i;
-    if (k === 'name') map.name = i;
-    if (k === 'parentage') map.parentage = i;
-    if (k === 'type') map.type = i;
-    if (k === 'status') map.status = i;
-    if (k === 'reason') map.reason = i;
-  });
-  // Fallback positions matching the Reshipora sample
-  if (map.sNo === undefined) map.sNo = 0;
-  if (map.khewat === undefined) map.khewat = 1;
-  if (map.khata === undefined) map.khata = 2;
-  if (map.khasra === undefined) map.khasra = 3;
-  if (map.name === undefined) map.name = 4;
-  if (map.parentage === undefined) map.parentage = 5;
-  if (map.type === undefined) map.type = 6;
-  if (map.status === undefined) map.status = 7;
-  if (map.reason === undefined) map.reason = 8;
-  return map;
-}
-
-/* ============================================================
-   PROCESS ONE VILLAGE (routes to bucket or aadhaar processor)
-   ============================================================ */
-function processVillage(fileEntry, rawRows) {
-  if (!rawRows.length) return null;
-  const fmt = detectFormat(rawRows);
-  if (fmt.format === 'aadhaar') return processAadhaarFile(fileEntry, rawRows, fmt);
-  return processBucketFile(fileEntry, rawRows, fmt);
-}
-
-// ---------- Bucket format: many rows per person → one person per (name, parentage), surveys aggregated ----------
-function processBucketFile(fileEntry, rawRows, fmt) {
-  const { file, tehsil, village } = fileEntry;
-  const cols = fmt.cols;
-  const records = [];
-  for (let r = fmt.headerRow + 1; r < rawRows.length; r++) {
-    const row = rawRows[r];
-    if (!row || row.every(c => c === '' || c === null)) continue;
-    records.push({
-      bucketId:  String(row[cols.bucketId] || '').trim(),
-      name:      isMissing(row[cols.ownerName])      ? '' : String(row[cols.ownerName]).trim(),
-      parentage: isMissing(row[cols.identifierName]) ? '' : String(row[cols.identifierName]).trim(),
-      survey:    String(row[cols.surveyNumber] || '').trim(),
-      subSurvey: String(row[cols.subSurveyNumber] || '').trim(),
-    });
-  }
-  // Dedup by (name + parentage) case-sensitive, NULL falls back to BucketId
-  const groups = new Map();
-  for (const rec of records) {
-    const key = (!rec.name && !rec.parentage) ? 'BID::' + rec.bucketId : rec.name + '||' + rec.parentage;
-    if (!groups.has(key)) {
-      groups.set(key, { bucketId: rec.bucketId, name: rec.name, parentage: rec.parentage, surveyPairs: new Set(), rowCount: 0 });
-    }
-    const g = groups.get(key);
-    let sn = rec.survey;
-    if (rec.subSurvey && rec.subSurvey !== '*' && rec.subSurvey !== '') sn = `${rec.survey}/${rec.subSurvey}`;
-    if (sn) g.surveyPairs.add(sn);
-    g.rowCount++;
-  }
+/**
+ * Read all sheets, extract Khewat + Khata person rows.
+ * Handles continuation rows (blank Khewat/Khata means "same as previous").
+ * @param {XLSX.WorkBook} wb
+ * @param {string} mode - "both" (default) or "khewat-only"
+ */
+async function extractFromWorkbook(wb, mode) {
+  const includeKhata = mode !== "khewat-only";
   const persons = [];
-  let idx = 0;
-  for (const g of groups.values()) {
-    idx++;
-    persons.push({
-      id: `p${idx}`,
-      bucketId: g.bucketId,
-      name: g.name,
-      parentage: g.parentage,
-      surveys: [...g.surveyPairs].sort((a,b) => (parseFloat(a.split('/')[0])||0) - (parseFloat(b.split('/')[0])||0)),
-      rowCount: g.rowCount,
-      deleted: false,
-    });
-  }
-  return {
-    key: `${tehsil}__${village}`, tehsil, village, fileName: file.name,
-    format: 'bucket',
-    persons, nonHumanGroups: [], similarGroups: [],
-  };
-}
+  let sno = 0;
 
-// ---------- Aadhaar Collection format: each row is already one person (per khasra), no dedup pass ----------
-function processAadhaarFile(fileEntry, rawRows, fmt) {
-  const { file, tehsil, village } = fileEntry;
-  const cols = fmt.cols;
-  const persons = [];
-  let idx = 0;
-  for (let r = fmt.headerRow + 1; r < rawRows.length; r++) {
-    const row = rawRows[r];
-    if (!row || row.every(c => c === '' || c === null)) continue;
-    // Skip a stray footer row that repeats the header
-    const nameCell = String(row[cols.name] || '').trim();
-    if (nameCell.toLowerCase() === 'name') continue;
-    idx++;
-    persons.push({
-      id: `p${idx}`,
-      name: nameCell,
-      parentage: String(row[cols.parentage] || '').trim(),
-      khewat:    row[cols.khewat] != null ? String(row[cols.khewat]).trim() : '',
-      khata:     row[cols.khata]  != null ? String(row[cols.khata]).trim()  : '',
-      khasra:    row[cols.khasra] != null ? String(row[cols.khasra]).trim() : '',
-      type:      String(row[cols.type]   || '').trim(),
-      status:    String(row[cols.status] || '').trim(),
-      reason:    String(row[cols.reason] || '').trim(),
-      deleted: false,
-    });
-  }
-  return {
-    key: `${tehsil}__${village}`, tehsil, village, fileName: file.name,
-    format: 'aadhaar',
-    persons, nonHumanGroups: [], similarGroups: [],
-  };
-}
+  for (const sheetName of wb.SheetNames) {
+    const sheet = wb.Sheets[sheetName];
+    const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "", raw: false });
+    if (!rows.length) continue;
 
-/* ============================================================
-   CLUSTER: non-human + fuzzy similar
-   ============================================================ */
-function buildGroups(village, opts) {
-  const { doNonHuman, doFuzzy, threshold } = opts;
+    const detected = detectHeaders(rows);
+    const cols = detected ? detected.cols : FALLBACK_COLS;
+    const startRow = detected ? detected.headerRow + 1 : 0;
 
-  // 1) Non-human detection
-  const nhBuckets = new Map();
-  if (doNonHuman) {
-    for (const p of village.persons) {
-      const hit = detectNonHuman(p.name, p.parentage);
-      if (hit) {
-        if (!nhBuckets.has(hit.key)) nhBuckets.set(hit.key, { key: hit.key, label: hit.label, members: [] });
-        nhBuckets.get(hit.key).members.push(p);
-        p.nonHumanKey = hit.key;
-      }
-    }
-  }
-  village.nonHumanGroups = [...nhBuckets.values()].sort((a,b)=>b.members.length - a.members.length);
+    // Track last-seen Khewat and Khata for continuation
+    let lastKhewat = "", lastKhata = "";
 
-  // 2) Fuzzy similar clustering (skip persons already flagged as non-human)
-  const similarGroups = [];
-  if (doFuzzy) {
-    const eligible = village.persons
-      .filter(p => !p.nonHumanKey)
-      .map(p => ({ p, nName: normalize(p.name), nPar: normalize(p.parentage) }))
-      .filter(x => x.nName || x.nPar);  // skip totally empty
+    for (let r = startRow; r < rows.length; r++) {
+      const row = rows[r] || [];
+      const khewat = String(row[cols.khewat] || "").trim();
+      const khata  = String(row[cols.khata]  || "").trim();
+      const owner  = String(row[cols.owner]  || "").trim();
+      const cult   = String(row[cols.cultivator] || "").trim();
 
-    // Union-Find
-    const parent = new Map();
-    eligible.forEach(x => parent.set(x.p.id, x.p.id));
-    function find(a) { while (parent.get(a) !== a) { parent.set(a, parent.get(parent.get(a))); a = parent.get(a); } return a; }
-    function union(a, b) { const ra = find(a), rb = find(b); if (ra !== rb) parent.set(ra, rb); }
+      if (khewat) lastKhewat = normalizeKhewat(khewat);
+      if (khata)  lastKhata  = normalizeKhata(khata);
 
-    // Full pairwise comparison — no blocking, so cross-first-letter matches like
-    // "raham" vs "abdul raham" or "lone" prefix variants aren't missed
-    for (let i = 0; i < eligible.length; i++) {
-      for (let j = i + 1; j < eligible.length; j++) {
-        const a = eligible[i], b = eligible[j];
-        const nameSim = tokenSim(a.nName, b.nName);
-        if (nameSim < threshold) continue;
-        // parentage: if one side empty, only pair when names are near-perfect
-        if (!a.nPar || !b.nPar) {
-          if (nameSim < 0.97) continue;
+      // Skip totally empty rows
+      if (!owner && !cult) continue;
+
+      // Khewat owners — handles three sub-cases, plus a multi-transaction skip:
+      //  (skip) If the cell has TWO OR MORE transaction markers of the same
+      //         kind (hissa-wahiban twice OR mahub twice), it's a chained
+      //         multi-transaction cell — auto-parsing is unreliable, emit
+      //         nothing per user's instruction.
+      //  (a) Donation split: cell contains "hissa daran wahiban" (or variant
+      //      "hissa dar waahb") → persons BEFORE the marker are the original
+      //      owners (Khewat green); persons AFTER are the new donee holders
+      //      (treated as Khata pink).
+      //  (b) Sale transaction: cell contains "baya" (or another txn verb) →
+      //      take only the person AFTER the verb as current owner (Khewat green);
+      //      seller is dropped.
+      //  (c) Normal: parse the whole cell as Khewat owners (green).
+      if (owner) {
+        const wahibanCount = (owner.match(HISSA_WAHIBAN_GLOBAL_RE) || []).length;
+        const mahubCount   = (owner.match(MAHUB_GLOBAL_RE)         || []).length;
+        if (wahibanCount >= 2 || mahubCount >= 2) {
+          // Multi-transaction cell — skip entirely
         } else {
-          const parSim = tokenSim(a.nPar, b.nPar);
-          if (parSim < threshold) continue;
+          const wahibanMatch = owner.match(HISSA_WAHIBAN_RE);
+          if (wahibanMatch) {
+            // (a) Donation split
+            const donorsPart = owner.slice(0, wahibanMatch.index).trim();
+            const doneesPart = owner.slice(wahibanMatch.index + wahibanMatch[0].length).trim();
+            for (const p of parseKhewatCell(donorsPart)) {
+              persons.push({
+                source: "khewat",
+                khewat: lastKhewat,
+                khata:  "",
+                name: p.name, parentage: p.parentage,
+                residence: p.residence, caste: p.caste
+              });
+            }
+            if (includeKhata) {
+              for (const p of parseKhewatCell(doneesPart)) {
+                persons.push({
+                  source: "khata",
+                  khewat: lastKhewat,
+                  khata:  lastKhata,
+                  name: p.name, parentage: p.parentage,
+                  residence: p.residence, caste: p.caste
+                });
+              }
+            }
+          } else {
+            // (b) Transaction slice (if any), then normal Khewat parse
+            let ownerText = owner;
+            const txnMatch = owner.match(TXN_VERBS);
+            if (txnMatch) {
+              ownerText = owner.slice(txnMatch.index + txnMatch[0].length).trim();
+              ownerText = ownerText.replace(/^(ne|ke|ko|se|ba)\s+/i, "").trim();
+            }
+            for (const p of parseKhewatCell(ownerText)) {
+              persons.push({
+                source: "khewat",
+                khewat: lastKhewat,
+                khata:  "",
+                name: p.name, parentage: p.parentage,
+                residence: p.residence, caste: p.caste
+              });
+            }
+          }
         }
-        union(a.p.id, b.p.id);
       }
-    }
-    const clusters = new Map();
-    for (const x of eligible) {
-      const root = find(x.p.id);
-      if (!clusters.has(root)) clusters.set(root, []);
-      clusters.get(root).push(x);
-    }
-    for (const members of clusters.values()) {
-      if (members.length > 1) {
-        // representative = first member; compute pairwise sim vs rep for each member
-        const rep = members[0];
-        for (const x of members) {
-          x.p.simToRep = {
-            name: tokenSim(rep.nName, x.nName),
-            par:  tokenSim(rep.nPar, x.nPar),
-          };
+
+      // Khata cultivators (pink) — both Khewat + Khata filled.
+      // Same multi-transaction skip as owner cell: two-or-more wahiban markers
+      // or two-or-more mahub markers → drop the cell entirely.
+      if (includeKhata && cult) {
+        const cWahiban = (cult.match(HISSA_WAHIBAN_GLOBAL_RE) || []).length;
+        const cMahub   = (cult.match(MAHUB_GLOBAL_RE)         || []).length;
+        if (cWahiban >= 2 || cMahub >= 2) {
+          // Multi-transaction cell — skip entirely
+        } else {
+          const people = parseKhataCell(cult);
+          for (const p of people) {
+            persons.push({
+              source: "khata",
+              khewat: lastKhewat,
+              khata:  lastKhata,
+              name: p.name,
+              parentage: p.parentage,
+              residence: p.residence,
+              caste: p.caste
+            });
+          }
         }
-        similarGroups.push({ members: members.map(x => x.p) });
       }
-    }
-    // sort largest groups first
-    similarGroups.sort((a,b)=> b.members.length - a.members.length);
-  }
-  village.similarGroups = similarGroups;
-}
-
-/* ============================================================
-   UI: FILE CONFIG LIST
-   ============================================================ */
-document.getElementById('file-input').addEventListener('change', e => {
-  const files = [...e.target.files];
-  STATE.files = files.map(f => ({
-    file: f,
-    tehsil: TEHSILS[0],
-    village: f.name.replace(/\.(xlsx|xls)$/i, '').toUpperCase(),
-  }));
-  renderFileConfigs();
-  document.getElementById('settings-card').style.display = STATE.files.length ? 'block' : 'none';
-});
-
-function renderFileConfigs() {
-  const box = document.getElementById('file-configs');
-  box.innerHTML = '';
-  STATE.files.forEach((f, i) => {
-    const div = document.createElement('div');
-    div.className = 'file-config';
-    div.innerHTML = `
-      <div><strong>${escapeHtml(f.file.name)}</strong></div>
-      <div class="row">
-        <label>Tehsil:</label>
-        <select data-i="${i}" data-k="tehsil">
-          ${TEHSILS.map(t => `<option ${t === f.tehsil ? 'selected' : ''}>${t}</option>`).join('')}
-        </select>
-        <label>Village:</label>
-        <input type="text" data-i="${i}" data-k="village" value="${escapeHtml(f.village)}" style="width:220px;">
-        <label>District:</label>
-        <input type="text" value="Bandipora" disabled style="width:120px;">
-      </div>
-    `;
-    box.appendChild(div);
-  });
-  box.querySelectorAll('select, input[type=text]').forEach(el => {
-    el.addEventListener('change', evt => {
-      const i = +evt.target.dataset.i, k = evt.target.dataset.k;
-      STATE.files[i][k] = evt.target.value;
-    });
-  });
-}
-
-/* ============================================================
-   PROCESS BUTTON
-   ============================================================ */
-// Slider 0-10 → threshold. 0 = disable fuzzy grouping entirely.
-// Higher slider position = more tolerant.
-function sliderToThreshold(v) {
-  const map = { 1:1.00, 2:0.95, 3:0.90, 4:0.85, 5:0.80, 6:0.75, 7:0.70, 8:0.65, 9:0.60, 10:0.55 };
-  return map[v] ?? null;  // null = off
-}
-function sliderLabel(v) {
-  const t = sliderToThreshold(v);
-  if (t === null) return `<strong>0</strong> (off)`;
-  return `<strong>${v}</strong> (threshold ${t.toFixed(2)})`;
-}
-document.getElementById('fuzzy-slider').addEventListener('input', e => {
-  document.getElementById('fuzzy-slider-val').innerHTML = sliderLabel(+e.target.value);
-});
-
-document.getElementById('process-btn').addEventListener('click', async () => {
-  const log = document.getElementById('status-log');
-  log.style.display = 'block';
-  log.textContent = '';
-  const logLine = m => { log.textContent += m + '\n'; log.scrollTop = log.scrollHeight; };
-
-  const sliderVal = +document.getElementById('fuzzy-slider').value;
-  const threshold = sliderToThreshold(sliderVal);
-  const doNonHuman = document.getElementById('detect-nonhuman').checked;
-  const doFuzzy = document.getElementById('cluster-fuzzy').checked && threshold !== null;
-  logLine(`Slider: ${sliderVal}${threshold === null ? ' (fuzzy OFF)' : ` → threshold ${threshold}`}`);
-
-  STATE.villages = [];
-  for (const fEntry of STATE.files) {
-    logLine(`Reading ${fEntry.file.name}...`);
-    try {
-      const rows = await readXlsx(fEntry.file);
-      const v = processVillage(fEntry, rows);
-      if (!v) { logLine(`  → empty file, skipped.`); continue; }
-      buildGroups(v, { doNonHuman, doFuzzy, threshold });
-      STATE.villages.push(v);
-      logLine(`  → format=${v.format}; ${v.persons.length} rows; ${v.nonHumanGroups.length} non-human groups; ${v.similarGroups.length} fuzzy clusters.`);
-    } catch (err) {
-      logLine(`  → ERROR: ${err.message}`);
-      console.error(err);
     }
   }
 
-  if (!STATE.villages.length) { logLine('No villages processed.'); return; }
-  STATE.activeTab = 0;
-  renderTabs();
-  renderActiveTab();
-  document.getElementById('review-section').style.display = 'block';
-  document.getElementById('download-section').style.display = 'block';
-  logLine('Done.');
-});
+  // Assign S.No. and flag duplicates
+  renumberAndFlag(persons);
 
-document.getElementById('reset-btn').addEventListener('click', () => {
-  document.getElementById('file-input').value = '';
-  STATE.files = []; STATE.villages = []; STATE.activeTab = 0;
-  document.getElementById('file-configs').innerHTML = '';
-  document.getElementById('settings-card').style.display = 'none';
-  document.getElementById('review-section').style.display = 'none';
-  document.getElementById('download-section').style.display = 'none';
-  document.getElementById('status-log').style.display = 'none';
-});
-
-/* ============================================================
-   UI: TABS + REVIEW
-   ============================================================ */
-function renderTabs() {
-  const bar = document.getElementById('tab-bar');
-  bar.innerHTML = '';
-  STATE.villages.forEach((v, i) => {
-    const btn = document.createElement('button');
-    btn.className = 'tab-btn' + (i === STATE.activeTab ? ' active' : '');
-    btn.textContent = `${v.village} (${v.persons.filter(p=>!p.deleted).length})`;
-    btn.addEventListener('click', () => { STATE.activeTab = i; renderTabs(); renderActiveTab(); });
-    bar.appendChild(btn);
-  });
+  return persons;
 }
 
-function renderActiveTab() {
-  const box = document.getElementById('tab-content');
-  const v = STATE.villages[STATE.activeTab];
-  if (!v) { box.innerHTML = ''; return; }
+/**
+ * Assign sequential S.No. and (re)compute the duplicate flag on each person.
+ * Called by extractFromWorkbook and by both purge handlers so the state stays
+ * consistent after any row-removal operation.
+ * Duplicate key is (name + parentage), lowercase and whitespace-normalised.
+ */
+function renumberAndFlag(persons) {
+  persons.forEach((p, i) => p.sno = i + 1);
+  const key = p => (p.name + "|" + p.parentage).toLowerCase().replace(/\s+/g, " ").trim();
+  const counts = {};
+  persons.forEach(p => { counts[key(p)] = (counts[key(p)] || 0) + 1; });
+  persons.forEach(p => { p.duplicate = counts[key(p)] > 1; });
+}
 
-  const alive = v.persons.filter(p => !p.deleted);
-  const nhAlive = v.nonHumanGroups.map(g => ({ ...g, members: g.members.filter(m => !m.deleted) })).filter(g => g.members.length);
-  const simAlive = v.similarGroups.map(g => ({ ...g, members: g.members.filter(m => !m.deleted) })).filter(g => g.members.length > 1);
+/* =========================================================================
+   RENDER
+   ========================================================================= */
 
-  let html = `
-    <div class="stats">
-      <span class="stat-pill">Village: <strong>${escapeHtml(v.village)}</strong></span>
-      <span class="stat-pill">Tehsil: <strong>${escapeHtml(v.tehsil)}</strong></span>
-      <span class="stat-pill">Alive: <strong>${alive.length}</strong> / ${v.persons.length}</span>
-      <span class="stat-pill">Non-human groups: <strong>${nhAlive.length}</strong></span>
-      <span class="stat-pill">Fuzzy clusters: <strong>${simAlive.length}</strong></span>
-    </div>
+/**
+ * Render the preview table + legend + stats.
+ * Accepts LAST_FILES-shaped array: [{ village, persons, meta }].
+ * When multiple villages are loaded, an extra Village column is shown up
+ * front so rows are attributable at a glance.
+ */
+function renderPreview(entries) {
+  const meta = entries[0].meta;
+  const khewatOnly = meta.mode === "khewat-only";
+  const multi = entries.length > 1;
+
+  // Flatten all persons across villages, stamping each with its village
+  const rows = [];
+  for (const entry of entries) {
+    for (const p of entry.persons) rows.push({ ...p, _village: entry.village });
+  }
+
+  // Rebuild table header — prepend a Village column in multi-file mode
+  const headers = [];
+  if (multi) headers.push("Village");
+  headers.push("S.No.", "Khewat No.");
+  if (!khewatOnly) headers.push("Khata No.");
+  headers.push("Name", "Parentage", "Caste", "Residence");
+  document.querySelector("#preview thead").innerHTML =
+    "<tr>" + headers.map(h => `<th>${h}</th>`).join("") + "</tr>";
+
+  const tbody = document.querySelector("#preview tbody");
+  tbody.innerHTML = "";
+  for (const p of rows) {
+    const tr = document.createElement("tr");
+    tr.className = p.source;
+    const cells = [];
+    if (multi) cells.push(`<td>${escapeHtml(p._village)}</td>`);
+    cells.push(`<td>${p.sno}</td>`);
+    cells.push(`<td>${escapeHtml(p.khewat)}</td>`);
+    if (!khewatOnly) cells.push(`<td>${escapeHtml(p.khata)}</td>`);
+    cells.push(`<td class="${p.duplicate ? "dup" : ""}">${escapeHtml(p.name)}</td>`);
+    cells.push(`<td>${escapeHtml(p.parentage)}</td>`);
+    cells.push(`<td>${escapeHtml(p.caste)}</td>`);
+    cells.push(`<td>${escapeHtml(p.residence)}</td>`);
+    tr.innerHTML = cells.join("");
+    tbody.appendChild(tr);
+  }
+
+  // Legend
+  const legendEl = document.querySelector("#result .legend");
+  legendEl.innerHTML = `
+    <div class="legend-item"><span class="swatch green"></span> Owner mentioned in Khewat</div>
+    ${khewatOnly ? "" : '<div class="legend-item"><span class="swatch pink"></span> Cultivator fetched from Khata</div>'}
+    <div class="legend-item"><span class="swatch red"></span> Duplicate name (appears more than once)</div>
   `;
 
-  // ---- Non-human section ----
-  if (nhAlive.length) {
-    html += `<div class="section-header"><h3>⚠️ Non-Human Entries (${nhAlive.reduce((a,g)=>a+g.members.length,0)} rows across ${nhAlive.length} groups)</h3>
-      <button class="danger small" onclick="deleteAllNonHuman()">Delete All Non-Human</button></div>`;
-    for (const g of nhAlive) {
-      html += renderGroupCard(g, 'nonhuman', v);
-    }
-  }
+  // Stats — aggregate across villages
+  const nKhewat = rows.filter(p => p.source === "khewat").length;
+  const nKhata  = rows.filter(p => p.source === "khata").length;
+  const nDup    = rows.filter(p => p.duplicate).length;
+  const villageStat = multi
+    ? `<span>Villages: <b>${entries.length}</b></span>`
+    : `<span>Village: <b>${escapeHtml(entries[0].village)}</b></span>`;
+  document.getElementById("stats").innerHTML = `
+    <span>Total: <b>${rows.length}</b></span>
+    <span>Khewat: <b>${nKhewat}</b></span>
+    ${khewatOnly ? "" : `<span>Khata: <b>${nKhata}</b></span>`}
+    <span>Duplicate rows: <b>${nDup}</b></span>
+    ${villageStat}
+    <span>Tehsil: <b>${escapeHtml(meta.tehsil)}</b></span>
+  `;
 
-  // ---- Similar section ----
-  if (simAlive.length) {
-    html += `<div class="section-header"><h3>👥 Similar Name Groups (${simAlive.length})</h3>
-      <span class="small-muted">Merges surveys from checked rows into the first unchecked row of each group on Apply.</span></div>`;
-    for (const g of simAlive) {
-      html += renderGroupCard(g, 'similar', v);
-    }
-  }
-
-  if (nhAlive.length + simAlive.length > 0) {
-    html += `<div class="master-actions">
-      <button class="danger" onclick="applyDeletions()">Apply Checked Deletions</button>
-      <button class="secondary" onclick="clearAllChecks()">Clear All Checks</button>
-      <button class="secondary" onclick="undoDeletions()">Undo All Deletions</button>
-    </div>`;
-  }
-
-  // ---- Full list ----
-  html += `<div class="section-header"><h3>All persons in ${escapeHtml(v.village)}</h3>
-    <span class="small-muted">Struck-through = deleted. Shown for reference; only surviving rows go into downloads.</span></div>`;
-  html += renderFullTable(v);
-
-  box.innerHTML = html;
+  document.getElementById("result").hidden = false;
+  // The within-Khewat purge only makes sense in Both mode
+  document.getElementById("purge-within-khewat").hidden = khewatOnly;
 }
 
-function renderGroupCard(g, kind, v) {
-  const label = kind === 'nonhuman' ? g.label : `Cluster of ${g.members.length}`;
-  const btnDeleteAll = kind === 'nonhuman'
-    ? `<button class="danger small" onclick="event.stopPropagation(); checkAllInGroup('${kind}','${g.key||g.members[0].id}')">Check all</button>`
-    : `<button class="secondary small" onclick="event.stopPropagation(); checkAllButFirst('${kind}','${g.members[0].id}')">Check all but first</button>`;
-  const showScore = kind === 'similar';
-  const isAadhaar = v.format === 'aadhaar';
-
-  // Column headers depend on format
-  const headerCells = isAadhaar
-    ? '<th>Del</th><th>Khewat</th><th>Khata</th><th>Khasra</th><th>Name</th><th>Parentage</th><th>Type</th>'
-    : '<th>Del</th><th>Bucket ID</th><th>Name</th><th>Parentage</th><th>Survey Nos</th><th>#Rows</th>';
-  const scoreHeader = showScore ? '<th>Sim (name/par)</th>' : '';
-
-  const rows = g.members.map((p, idx) => {
-    const scoreCell = showScore
-      ? (idx === 0
-          ? '<td class="small-muted">— (rep)</td>'
-          : `<td class="nowrap">${(p.simToRep?.name ?? 0).toFixed(2)} / ${(p.simToRep?.par ?? 0).toFixed(2)}</td>`)
-      : '';
-    const dataCells = isAadhaar
-      ? `<td class="nowrap">${escapeHtml(p.khewat)}</td>
-         <td class="nowrap">${escapeHtml(p.khata)}</td>
-         <td class="nowrap">${escapeHtml(p.khasra)}</td>
-         <td>${escapeHtml(p.name) || '<em>(blank)</em>'}</td>
-         <td>${escapeHtml(p.parentage) || '<em>(blank)</em>'}</td>
-         <td class="nowrap">${escapeHtml(p.type)}</td>`
-      : `<td class="nowrap">${escapeHtml(p.bucketId)}</td>
-         <td>${escapeHtml(p.name) || '<em>(blank)</em>'}</td>
-         <td>${escapeHtml(p.parentage) || '<em>(blank)</em>'}</td>
-         <td>${escapeHtml((p.surveys||[]).join(', '))}</td>
-         <td class="nowrap">${p.rowCount}</td>`;
-    return `
-    <tr class="${kind === 'nonhuman' ? 'nonhuman-row' : 'dup-row'}">
-      <td class="checkbox-cell"><input type="checkbox" class="del-check" data-id="${p.id}"></td>
-      ${dataCells}
-      ${scoreCell}
-    </tr>`;
-  }).join('');
-  return `
-    <div class="group-card">
-      <div class="group-header ${kind}" onclick="toggleGroup(this)">
-        <div><strong>${escapeHtml(label)}</strong> <span class="small-muted">— ${g.members.length} rows</span></div>
-        <div class="actions">${btnDeleteAll}</div>
-      </div>
-      <div class="group-body">
-        <table>
-          <thead><tr>${headerCells}${scoreHeader}</tr></thead>
-          <tbody>${rows}</tbody>
-        </table>
-      </div>
-    </div>`;
+function escapeHtml(s) {
+  return String(s || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
 }
 
-function renderFullTable(v) {
-  const alive = v.persons;
-  const isAadhaar = v.format === 'aadhaar';
-  const headerCells = isAadhaar
-    ? '<th>S.No.</th><th>Khewat</th><th>Khata</th><th>Khasra</th><th>Name</th><th>Parentage</th><th>Type</th><th>Flag</th>'
-    : '<th>S.No.</th><th>Bucket ID</th><th>Name</th><th>Parentage</th><th>Survey Nos</th><th>#Rows</th><th>Flag</th>';
-  let html = `<table><thead><tr>${headerCells}</tr></thead><tbody>`;
-  let sn = 0;
-  for (const p of alive) {
-    if (!p.deleted) sn++;
-    const flag = p.nonHumanKey ? '⚠️ Non-human' : '';
-    const dataCells = isAadhaar
-      ? `<td class="nowrap">${escapeHtml(p.khewat)}</td>
-         <td class="nowrap">${escapeHtml(p.khata)}</td>
-         <td class="nowrap">${escapeHtml(p.khasra)}</td>
-         <td>${escapeHtml(p.name) || '<em>(blank)</em>'}</td>
-         <td>${escapeHtml(p.parentage) || '<em>(blank)</em>'}</td>
-         <td class="nowrap">${escapeHtml(p.type)}</td>`
-      : `<td>${escapeHtml(p.bucketId)}</td>
-         <td>${escapeHtml(p.name) || '<em>(blank)</em>'}</td>
-         <td>${escapeHtml(p.parentage) || '<em>(blank)</em>'}</td>
-         <td>${escapeHtml((p.surveys||[]).join(', '))}</td>
-         <td>${p.rowCount}</td>`;
-    html += `<tr class="${p.deleted ? 'deleted-row' : ''}">
-      <td>${p.deleted ? '—' : sn}</td>
-      ${dataCells}
-      <td>${flag}</td>
-    </tr>`;
-  }
-  html += `</tbody></table>`;
-  return html;
-}
+/* =========================================================================
+   EXCEL EXPORT
+   ========================================================================= */
 
-/* ============================================================
-   GROUP ACTIONS (called from onclick handlers)
-   ============================================================ */
-window.toggleGroup = function(hdr) {
-  const body = hdr.nextElementSibling;
-  body.classList.toggle('collapsed');
-};
-
-window.checkAllInGroup = function(kind, keyOrId) {
-  const v = STATE.villages[STATE.activeTab];
-  const groups = kind === 'nonhuman' ? v.nonHumanGroups : v.similarGroups;
-  const g = groups.find(x => (x.key || x.members[0].id) === keyOrId);
-  if (!g) return;
-  const ids = new Set(g.members.map(m => m.id));
-  document.querySelectorAll('.del-check').forEach(cb => {
-    if (ids.has(cb.dataset.id)) cb.checked = true;
-  });
-};
-
-window.checkAllButFirst = function(kind, firstId) {
-  const v = STATE.villages[STATE.activeTab];
-  const g = v.similarGroups.find(x => x.members[0].id === firstId);
-  if (!g) return;
-  const ids = new Set(g.members.slice(1).map(m => m.id));
-  document.querySelectorAll('.del-check').forEach(cb => {
-    if (ids.has(cb.dataset.id)) cb.checked = true;
-    else if (cb.dataset.id === firstId) cb.checked = false;
-  });
-};
-
-window.deleteAllNonHuman = function() {
-  const v = STATE.villages[STATE.activeTab];
-  const ids = new Set();
-  v.nonHumanGroups.forEach(g => g.members.forEach(m => { if (!m.deleted) ids.add(m.id); }));
-  if (!ids.size) return;
-  if (!confirm(`Delete all ${ids.size} non-human rows in ${v.village}?`)) return;
-  for (const p of v.persons) if (ids.has(p.id)) p.deleted = true;
-  renderTabs(); renderActiveTab();
-};
-
-window.applyDeletions = function() {
-  const v = STATE.villages[STATE.activeTab];
-  const checkedIds = new Set([...document.querySelectorAll('.del-check:checked')].map(cb => cb.dataset.id));
-  if (!checkedIds.size) { alert('Nothing checked.'); return; }
-
-  // Bucket format only: merge surveys + rowCount from checked → first surviving row of cluster.
-  // Aadhaar format: each row is one khasra, no aggregation; just delete.
-  if (v.format === 'bucket') {
-    for (const g of v.similarGroups) {
-      const aliveMembers = g.members.filter(m => !m.deleted);
-      const checked = aliveMembers.filter(m => checkedIds.has(m.id));
-      const kept    = aliveMembers.filter(m => !checkedIds.has(m.id));
-      if (!checked.length || !kept.length) continue;
-      const survivor = kept[0];
-      const mergedSet = new Set(survivor.surveys);
-      for (const c of checked) c.surveys.forEach(s => mergedSet.add(s));
-      survivor.surveys = [...mergedSet].sort((a,b)=>{
-        const na = parseFloat(a.split('/')[0]) || 0;
-        const nb = parseFloat(b.split('/')[0]) || 0;
-        return na - nb;
-      });
-      survivor.rowCount += checked.reduce((s,m)=>s+m.rowCount, 0);
-    }
-  }
-
-  for (const p of v.persons) if (checkedIds.has(p.id)) p.deleted = true;
-  renderTabs(); renderActiveTab();
-};
-
-window.clearAllChecks = function() {
-  document.querySelectorAll('.del-check').forEach(cb => cb.checked = false);
-};
-
-window.undoDeletions = function() {
-  const v = STATE.villages[STATE.activeTab];
-  v.persons.forEach(p => p.deleted = false);
-  renderTabs(); renderActiveTab();
-};
-
-/* ============================================================
-   DOWNLOADS
-   ============================================================ */
-document.getElementById('dl-current-xlsx').addEventListener('click', async () => {
-  const v = STATE.villages[STATE.activeTab];
-  const blob = await buildExcelBlob(v);
-  saveAs(blob, `Verification_${v.village}.xlsx`);
-});
-
-document.getElementById('dl-current-pdf').addEventListener('click', () => {
-  const v = STATE.villages[STATE.activeTab];
-  const blob = buildPdfBlob(v);
-  saveAs(blob, `Verification_${v.village}.pdf`);
-});
-
-document.getElementById('dl-all-zip').addEventListener('click', async () => {
-  const zip = new JSZip();
-  for (const v of STATE.villages) {
-    const xlsx = await buildExcelBlob(v);
-    const pdf  = buildPdfBlob(v);
-    zip.file(`Verification_${v.village}.xlsx`, xlsx);
-    zip.file(`Verification_${v.village}.pdf`, pdf);
-  }
-  const out = await zip.generateAsync({ type: 'blob' });
-  saveAs(out, `Verification_all_villages.zip`);
-});
-
-async function buildExcelBlob(v) {
-  const alive = v.persons.filter(p => !p.deleted);
+/**
+ * Build an Excel workbook for one village and return it as a Blob.
+ * Called by both the single-file download and the multi-file ZIP builder.
+ *
+ * The Excel-only columns Status + Remarks1 + AgriStack Entry Status are appended
+ * at the end of every row for the user to fill in later. They do NOT appear in
+ * the on-screen preview or the PDF.
+ *
+ * Status is a 3-option dropdown (Single entry/Alive, Deceased, Double entry).
+ * Remarks1 and AgriStack Entry Status cascade off it via INDIRECT + named ranges
+ * on a hidden "Lists" sheet:
+ *   Status = Single entry/Alive  → Remarks1 blank, AgriStack blank
+ *   Status = Deceased            → Remarks1 = [Mutation Attested and uploaded,
+ *                                              Mutation not attested]
+ *     • Remarks1 = Mutation Attested and uploaded → AgriStack = [Yes, No]
+ *     • Remarks1 = Mutation not attested          → AgriStack blank
+ *   Status = Double entry        → Remarks1 free-typed (list the khewats),
+ *                                  AgriStack blank
+ * showErrorMessage is off on Remarks1/AgriStack so the free-text case works.
+ * No cell fills / colour highlights — file is intentionally plain B/W-friendly.
+ */
+async function buildExcelBlob(persons, meta) {
+  const khewatOnly = meta.mode === "khewat-only";
   const wb = new ExcelJS.Workbook();
-  const ws = wb.addWorksheet('Verification');
-  const listSheet = wb.addWorksheet('_lists');
-  listSheet.state = 'hidden';
-  listSheet.getCell('A1').value = 'Issued';
-  listSheet.getCell('A2').value = 'Pending';
-  wb.definedNames.add(`_lists!$A$1:$A$2`, 'StatusList');
+  const ws = wb.addWorksheet("Persons");
 
-  if (v.format === 'aadhaar') {
-    // 9-col Aadhaar Collection structure
-    ws.mergeCells('A1:I1');
-    const hdr = ws.getCell('A1');
-    hdr.value = `AGRISTACK — AADHAAR SEEDING (POST-PRUNE)  |  Village: ${v.village}  |  Tehsil: ${v.tehsil}  |  District: Bandipora`;
-    hdr.font = { bold: true, size: 12 };
-    hdr.alignment = { horizontal: 'center' };
-    ws.getRow(1).height = 22;
+  // Hidden Lists sheet: holds all dropdown options for cascading data validation.
+  // Named ranges are keyed to Status / Remarks1 values (spaces + slashes → underscores)
+  // so INDIRECT can resolve them per row.
+  const lists = wb.addWorksheet("Lists", { state: "hidden" });
+  lists.getCell("A1").value = "Single entry/Alive";
+  lists.getCell("A2").value = "Deceased";
+  lists.getCell("A3").value = "Double entry";
+  lists.getCell("B1").value = "Mutation Attested and uploaded";
+  lists.getCell("B2").value = "Mutation not attested";
+  lists.getCell("C1").value = "Yes";
+  lists.getCell("C2").value = "No";
+  // Single-space placeholders so INDIRECT stays resolvable for the "no options"
+  // triggers — otherwise Excel greys out the dropdown arrow entirely.
+  lists.getCell("D1").value = " ";
+  lists.getCell("E1").value = " ";
+  lists.getCell("F1").value = " ";
 
-    ws.getRow(2).values = ['S.NO.','KHEWAT','KHATA','KHASRA','NAME','PARENTAGE','TYPE','STATUS','REASON'];
-    ws.getRow(2).font = { bold: true };
-    ws.getRow(2).alignment = { horizontal: 'center', vertical: 'middle' };
-    ws.getRow(2).height = 24;
+  wb.definedNames.add("Lists!$A$1:$A$3", "Status_Options");
+  wb.definedNames.add("Lists!$B$1:$B$2", "Deceased");
+  wb.definedNames.add("Lists!$C$1:$C$2", "Mutation_Attested_and_uploaded");
+  wb.definedNames.add("Lists!$D$1",       "Single_entry_Alive");
+  wb.definedNames.add("Lists!$E$1",       "Double_entry");
+  wb.definedNames.add("Lists!$F$1",       "Mutation_not_attested");
 
-    // Widths — Status = ~40% of Reason
-    ws.columns = [
-      { width: 6 },   // S.No.
-      { width: 8 },   // Khewat
-      { width: 8 },   // Khata
-      { width: 14 },  // Khasra
-      { width: 24 },  // Name
-      { width: 26 },  // Parentage
-      { width: 12 },  // Type
-      { width: 10 },  // Status
-      { width: 25 },  // Reason
-    ];
+  // Total columns (incl. trailing Status + Remarks1 + Remarks2):
+  //   khewatOnly: 6 base + 3 = 9  → last col I
+  //   both:       7 base + 3 = 10 → last col J
+  const lastCol = khewatOnly ? "I" : "J";
 
-    alive.forEach((p, i) => {
-      const row = ws.addRow([i + 1, p.khewat, p.khata, p.khasra, p.name, p.parentage, p.type, p.status || '', p.reason || '']);
-      row.alignment = { vertical: 'top', wrapText: true };
+  // Header block
+  ws.mergeCells(`A1:${lastCol}1`);
+  ws.getCell("A1").value = `${meta.village} — Tehsil ${meta.tehsil}, District Bandipora`;
+  ws.getCell("A1").font = { bold: true, size: 14 };
+  ws.getCell("A1").alignment = { horizontal: "center" };
+
+  // (Legend row removed — no colours in the output.)
+
+  // Column headers (with Status + Remarks1 + AgriStack Entry Status appended)
+  const headers = khewatOnly
+    ? ["S.No.", "Khewat No.", "Name", "Parentage", "Caste", "Residence", "Status", "Remarks1", "AgriStack Entry Status"]
+    : ["S.No.", "Khewat No.", "Khata No.", "Name", "Parentage", "Caste", "Residence", "Status", "Remarks1", "AgriStack Entry Status"];
+  const headerRow = ws.addRow(headers);
+  headerRow.font = { bold: true };
+  headerRow.eachCell(c => {
+    c.border = {
+      top: { style: "thin" }, bottom: { style: "thin" },
+      left: { style: "thin" }, right: { style: "thin" }
+    };
+  });
+
+  // Column letters/indices for the three fillable columns:
+  //   khewatOnly: Status=G(7), Remarks1=H(8), AgriStack=I(9)
+  //   both:       Status=H(8), Remarks1=I(9), AgriStack=J(10)
+  const statusColLetter   = khewatOnly ? "G" : "H";
+  const remarks1ColLetter = khewatOnly ? "H" : "I";
+  const statusColIdx    = khewatOnly ? 7 : 8;
+  const remarks1ColIdx  = khewatOnly ? 8 : 9;
+  const agristackColIdx = khewatOnly ? 9 : 10;
+
+  // Data rows — Status, Remarks1, AgriStack Entry Status left blank;
+  // data validation attached per row. No fills — plain black-and-white output.
+  for (const p of persons) {
+    const rowData = khewatOnly
+      ? [p.sno, p.khewat, p.name, p.parentage, p.caste, p.residence, "", "", ""]
+      : [p.sno, p.khewat, p.khata, p.name, p.parentage, p.caste, p.residence, "", "", ""];
+    const row = ws.addRow(rowData);
+    row.eachCell(c => {
+      c.border = {
+        top: { style: "hair" }, bottom: { style: "hair" },
+        left: { style: "hair" }, right: { style: "hair" }
+      };
+      c.alignment = { vertical: "top", wrapText: true };
     });
 
-    const lastRow = 2 + alive.length;
-    for (let r = 3; r <= lastRow; r++) {
-      ws.getCell(`H${r}`).dataValidation = {
-        type: 'list', allowBlank: true, formulae: ['=StatusList'],
-        showErrorMessage: true, errorStyle: 'warning',
-        errorTitle: 'Invalid', error: 'Choose Issued or Pending'
-      };
-    }
-    for (let r = 2; r <= lastRow; r++) {
-      for (let c = 1; c <= 9; c++) {
-        ws.getCell(r, c).border = {
-          top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'}
-        };
-      }
-    }
-    ws.views = [{ state: 'frozen', ySplit: 2 }];
-    ws.pageSetup = {
-      orientation: 'landscape', paperSize: 9,
-      fitToPage: true, fitToWidth: 1, fitToHeight: 0,
-      margins: { left:0.4, right:0.4, top:0.5, bottom:0.5, header:0.3, footer:0.3 },
-      printTitlesRow: '1:2',
+    // Data validation — Status is a hard 3-option list; Remarks1/AgriStack cascade
+    // via INDIRECT off the cell to their left. showErrorMessage off on the two
+    // cascading columns so users can free-type khewat numbers under Double entry.
+    const rowNum = row.number;
+    row.getCell(statusColIdx).dataValidation = {
+      type: "list",
+      allowBlank: true,
+      formulae: ["=Status_Options"]
     };
+    row.getCell(remarks1ColIdx).dataValidation = {
+      type: "list",
+      allowBlank: true,
+      showErrorMessage: false,
+      formulae: [`=INDIRECT(SUBSTITUTE(SUBSTITUTE(${statusColLetter}${rowNum}," ","_"),"/","_"))`]
+    };
+    row.getCell(agristackColIdx).dataValidation = {
+      type: "list",
+      allowBlank: true,
+      showErrorMessage: false,
+      formulae: [`=INDIRECT(SUBSTITUTE(SUBSTITUTE(${remarks1ColLetter}${rowNum}," ","_"),"/","_"))`]
+    };
+  }
+
+  // Column widths (Status = 20, Remarks1 = 32, AgriStack Entry Status = 28)
+  if (khewatOnly) {
+    ws.getColumn(1).width = 7;   // S.No.
+    ws.getColumn(2).width = 11;  // Khewat No.
+    ws.getColumn(3).width = 26;  // Name
+    ws.getColumn(4).width = 26;  // Parentage
+    ws.getColumn(5).width = 12;  // Caste
+    ws.getColumn(6).width = 30;  // Residence
+    ws.getColumn(7).width = 20;  // Status
+    ws.getColumn(8).width = 32;  // Remarks1
+    ws.getColumn(9).width = 28;  // AgriStack Entry Status
   } else {
-    // Bucket format — original 8-col structure
-    ws.mergeCells('A1:H1');
-    const hdr = ws.getCell('A1');
-    hdr.value = `District: Bandipora  |  Tehsil: ${v.tehsil}  |  Village: ${v.village}`;
-    hdr.font = { bold: true, size: 12 };
-    hdr.alignment = { horizontal: 'center' };
-    ws.getRow(1).height = 22;
-
-    ws.getRow(2).values = ['S.No.','Bucket ID','Name','Parentage','Survey Nos','#Rows','Status','Reason for Pendency'];
-    ws.getRow(2).font = { bold: true };
-    ws.getRow(2).alignment = { horizontal: 'center', vertical: 'middle' };
-    ws.getRow(2).height = 24;
-
-    ws.columns = [
-      { width: 6 }, { width: 14 }, { width: 22 }, { width: 22 },
-      { width: 26 }, { width: 8 }, { width: 10 }, { width: 25 },
-    ];
-
-    alive.forEach((p, i) => {
-      const row = ws.addRow([i + 1, p.bucketId, p.name, p.parentage, (p.surveys||[]).join(', '), p.rowCount, '', '']);
-      row.alignment = { vertical: 'top', wrapText: true };
-    });
-
-    const lastRow = 2 + alive.length;
-    for (let r = 3; r <= lastRow; r++) {
-      ws.getCell(`G${r}`).dataValidation = {
-        type: 'list', allowBlank: true, formulae: ['=StatusList'],
-        showErrorMessage: true, errorStyle: 'warning',
-        errorTitle: 'Invalid', error: 'Choose Issued or Pending'
-      };
-    }
-    for (let r = 2; r <= lastRow; r++) {
-      for (let c = 1; c <= 8; c++) {
-        ws.getCell(r, c).border = {
-          top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'}
-        };
-      }
-    }
-    ws.views = [{ state: 'frozen', ySplit: 2 }];
-    ws.pageSetup = {
-      orientation: 'landscape', paperSize: 9,
-      fitToPage: true, fitToWidth: 1, fitToHeight: 0,
-      margins: { left:0.4, right:0.4, top:0.5, bottom:0.5, header:0.3, footer:0.3 },
-      printTitlesRow: '1:2',
-    };
+    ws.getColumn(1).width = 7;
+    ws.getColumn(2).width = 11;
+    ws.getColumn(3).width = 11;
+    ws.getColumn(4).width = 26;
+    ws.getColumn(5).width = 26;
+    ws.getColumn(6).width = 12;
+    ws.getColumn(7).width = 30;
+    ws.getColumn(8).width = 20;  // Status
+    ws.getColumn(9).width = 32;  // Remarks1
+    ws.getColumn(10).width = 28; // AgriStack Entry Status
   }
 
   const buf = await wb.xlsx.writeBuffer();
-  return new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  return new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
 }
 
-function buildPdfBlob(v) {
-  const alive = v.persons.filter(p => !p.deleted);
+/** Single-file: download the xlsx directly. */
+async function exportExcelSingle(entry) {
+  const blob = await buildExcelBlob(entry.persons, entry.meta);
+  const suffix = entry.meta.mode === "khewat-only" ? "_KhewatOnly" : "";
+  saveAs(blob, `${sanitize(entry.village)}_Persons${suffix}.xlsx`);
+}
+
+/** Multi-file: build one xlsx per village and download as a single ZIP. */
+async function exportExcelZip(entries) {
+  const zip = new JSZip();
+  const suffix = entries[0].meta.mode === "khewat-only" ? "_KhewatOnly" : "";
+  for (const entry of entries) {
+    const blob = await buildExcelBlob(entry.persons, entry.meta);
+    zip.file(`${sanitize(entry.village)}_Persons${suffix}.xlsx`, blob);
+  }
+  const content = await zip.generateAsync({ type: "blob" });
+  const tehsil = entries[0].meta.tehsil;
+  saveAs(content, `${sanitize(tehsil)}_${entries.length}Villages_Persons${suffix}.zip`);
+}
+
+/* =========================================================================
+   PDF EXPORT
+   ========================================================================= */
+
+/**
+ * Build a print-friendly PDF for one village and return it as a Blob.
+ *
+ * Portrait A4, plain black-and-white — no fills, no highlights. Three blank
+ * fillable columns are appended after Residence for ground staff to fill in
+ * by hand:
+ *   • Status: Single Entry Alive / Deceased / Double Entry
+ *   • Mutation Entry Status / Duplicate Khewats:
+ *       for Deceased  → Mutation Attested / Not Attested + upload notes
+ *       for Double Entry → list the duplicate khewat numbers
+ *   • AgriStack Status: Yes / No — whether mutation is uploaded to AgriStack
+ *
+ * Page 1 also carries a bordered instruction NOTE at the top (drawn before
+ * autoTable, so it only appears on page 1). Structure:
+ *   • Purpose paragraph — states the report's aim and the official's duty.
+ *   • Codes legend — S.A / D / D.E shown in green / red / orange, both here
+ *     and everywhere they appear in the filling instructions below.
+ *   • Column-by-column filling — one line per column, with inline colour-
+ *     coded codes so the applicable status is spottable at a glance.
+ *   • Suggestion section — duplicate-entry spelling check (case-sensitive),
+ *     legal-heirs check, and special-entry conventions (sarkar / na /
+ *     namaloom; aabadi deh; sec-4).
+ * The table on page 1 starts just below the note; pages 2+ start at the
+ * normal top margin.
+ *
+ * Layout targets:
+ *   • 50/50 width split: populated cols 272pt, fillable cols 273pt (of 545pt).
+ *   • Narrow columns (S.No., Khewat, Caste, Residence) widened so their
+ *     fontSize-8 headers fit on a single line (no ugly mid-word breaks).
+ *   • Body fontSize 8 with 2pt padding — headless tests show 30 rows per
+ *     page on realistic mixed-length data and 23 rows per page in the
+ *     worst case. Page 1 loses ~5 rows to the note; still clears the
+ *     "at least 18 names per page" bar with margin.
+ *   • showHead: "everyPage" so the header row — and therefore the S.No.
+ *     column labelling — appears on every printed page.
+ *   • Title + page number repeat on every page via didDrawPage.
+ */
+function buildPdfBlob(persons, meta) {
+  const khewatOnly = meta.mode === "khewat-only";
   const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+  const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
 
-  const isAadhaar = v.format === 'aadhaar';
-  const head = isAadhaar
-    ? [['S.No.','Khewat','Khata','Khasra','Name','Parentage','Type','Status','Reason']]
-    : [['S.No.','Bucket ID','Name','Parentage','Survey Nos','#Rows','Status','Reason for Pendency']];
-  const body = isAadhaar
-    ? alive.map((p, i) => [i + 1, p.khewat, p.khata, p.khasra, p.name || '', p.parentage || '', p.type, p.status || '', p.reason || ''])
-    : alive.map((p, i) => [i + 1, p.bucketId, p.name || '', p.parentage || '', (p.surveys||[]).join(', '), p.rowCount, '', '']);
-  const columnStyles = isAadhaar
-    ? {
-        0: { cellWidth: 10, halign: 'center' },
-        1: { cellWidth: 14 },
-        2: { cellWidth: 14 },
-        3: { cellWidth: 22 },
-        4: { cellWidth: 42 },
-        5: { cellWidth: 45 },
-        6: { cellWidth: 18 },
-        7: { cellWidth: 20 },
-        8: { cellWidth: 45 },
-      }
-    : {
-        0: { cellWidth: 12, halign: 'center' },
-        1: { cellWidth: 22 },
-        2: { cellWidth: 42 },
-        3: { cellWidth: 42 },
-        4: { cellWidth: 50 },
-        5: { cellWidth: 14, halign: 'center' },
-        6: { cellWidth: 22 },
-        7: { cellWidth: 60 },
-      };
-  const title = isAadhaar
-    ? `AGRISTACK — AADHAAR SEEDING (POST-PRUNE)  |  Village: ${v.village}  |  Tehsil: ${v.tehsil}  |  District: Bandipora`
-    : `District: Bandipora  |  Tehsil: ${v.tehsil}  |  Village: ${v.village}`;
+  const populatedHead = khewatOnly
+    ? ["S.No.", "Khewat", "Name", "Parentage", "Caste", "Residence"]
+    : ["S.No.", "Khewat", "Khata", "Name", "Parentage", "Caste", "Residence"];
+  const fillableHead = [
+    "Status\n(Single Entry Alive /\nDeceased /\nDouble Entry)",
+    "Mutation Entry Status /\nDuplicate Khewats",
+    "AgriStack Status"
+  ];
+  const head = [[...populatedHead, ...fillableHead]];
 
-  doc.autoTable({
-    head, body, startY: 22, theme: 'grid',
-    headStyles: { fillColor: [238,242,247], textColor: 20, fontStyle: 'bold', halign: 'center' },
-    styles: { fontSize: 8, cellPadding: 2, valign: 'top', minCellHeight: 8 },
-    columnStyles,
-    didDrawPage: () => {
-      doc.setFontSize(11); doc.setFont(undefined, 'bold');
-      doc.text(title, 148, 14, { align: 'center' });
-      doc.setFontSize(9); doc.setFont(undefined, 'normal');
-      doc.text('Verification Sheet — Landholder Aadhaar Seeding', 148, 19, { align: 'center' });
-    },
-    margin: { top: 22, left: 8, right: 8, bottom: 12 },
+  const body = persons.map(p => {
+    const populated = khewatOnly
+      ? [p.sno, p.khewat, p.name, p.parentage, p.caste, p.residence]
+      : [p.sno, p.khewat, p.khata, p.name, p.parentage, p.caste, p.residence];
+    return [...populated, "", "", ""];  // three blank fillable cells per row
   });
 
-  const pageCount = doc.getNumberOfPages();
-  for (let i = 1; i <= pageCount; i++) {
-    doc.setPage(i);
-    doc.setFontSize(8);
-    doc.text(`Page ${i} of ${pageCount}`, 290, 205, { align: 'right' });
+  // 50/50 column-width split — 272pt populated + 273pt fillable = 545pt.
+  // Narrow columns widened so their fontSize-8 headers fit on a single line
+  // ("S.No.", "Khewat", "Caste", "Residence" — no ugly mid-word breaks).
+  const columnStyles = khewatOnly ? {
+    0: { cellWidth: 24, halign: "center" },  // S.No.
+    1: { cellWidth: 36, halign: "center" },  // Khewat
+    2: { cellWidth: 68 },                    // Name
+    3: { cellWidth: 68 },                    // Parentage
+    4: { cellWidth: 30, halign: "center" },  // Caste (fits "Ganaie" cleanly)
+    5: { cellWidth: 46 },                    // Residence            (populated: 272)
+    6: { cellWidth: 100 },                   // Status
+    7: { cellWidth: 92 },                    // Mutation Entry Status / Duplicate Khewats
+    8: { cellWidth: 81 }                     // AgriStack Status     (fillable: 273)
+  } : {
+    0: { cellWidth: 24, halign: "center" },  // S.No.
+    1: { cellWidth: 32, halign: "center" },  // Khewat
+    2: { cellWidth: 32, halign: "center" },  // Khata
+    3: { cellWidth: 54 },                    // Name
+    4: { cellWidth: 54 },                    // Parentage
+    5: { cellWidth: 30, halign: "center" },  // Caste (fits "Ganaie" cleanly)
+    6: { cellWidth: 46 },                    // Residence            (populated: 272)
+    7: { cellWidth: 100 },                   // Status
+    8: { cellWidth: 92 },                    // Mutation Entry Status / Duplicate Khewats
+    9: { cellWidth: 81 }                     // AgriStack Status     (fillable: 273)
+  };
+
+  const titleText = `${meta.village} — Tehsil ${meta.tehsil}, District Bandipora`;
+
+  // ── Page-1-only bordered instruction NOTE ──────────────────────────────
+  // Drawn manually before autoTable so it lands on page 1 only. autoTable's
+  // startY is then set to just below this note; margin.top (45pt) still
+  // applies for pages 2+, which start at the normal top margin.
+  //
+  // Status codes S.A / D / D.E are colour-coded (green / red / orange) both
+  // in the legend and everywhere they appear in the instructions, so ground
+  // staff can spot the applicable code at a glance.
+  const COLOR_SA = [0, 130, 0];      // dark green — Single-entry Alive
+  const COLOR_D  = [200, 0, 0];      // red — Deceased
+  const COLOR_DE = [220, 100, 0];    // dark orange — Double Entry
+
+  const noteX = 25;
+  const noteY = 45;
+  const noteW = 545;
+  const bodyX = noteX + 6;
+  const bodyMaxW = noteW - 12;
+  const NOTE_LINE_H = 9;
+  const bodyFs = 7.5;
+  let cy = noteY + 13;
+
+  // Helper: draw a sequence of coloured/bold text runs on a single line.
+  // runs = array of { text, bold?, color? }. No wrapping — caller keeps runs
+  // short enough for one line.
+  function drawRuns(x, y, runs) {
+    let cursorX = x;
+    for (const r of runs) {
+      doc.setFont("helvetica", r.bold ? "bold" : "normal");
+      const c = r.color || [0, 0, 0];
+      doc.setTextColor(c[0], c[1], c[2]);
+      doc.text(r.text, cursorX, y);
+      cursorX += doc.getTextWidth(r.text);
+    }
+    doc.setTextColor(0, 0, 0);
   }
 
-  return doc.output('blob');
+  // Helper: bold label followed by wrapping normal-weight content. First line
+  // sits next to the label; continuation lines wrap left-aligned to the note
+  // body column (or to the given indent) so we don't waste width under the
+  // label.
+  function noteLine(label, content, indent) {
+    indent = indent || 0;
+    const startX = bodyX + indent;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(bodyFs);
+    const lw = doc.getTextWidth(label + " ");
+    doc.text(label, startX, cy);
+    doc.setFont("helvetica", "normal");
+    const narrowLines = doc.splitTextToSize(content, bodyMaxW - lw - indent);
+    doc.text(narrowLines[0], startX + lw, cy);
+    if (narrowLines.length > 1) {
+      const restText = narrowLines.slice(1).join(" ").replace(/\s+/g, " ").trim();
+      const wideLines = doc.splitTextToSize(restText, bodyMaxW - indent);
+      for (const l of wideLines) {
+        cy += NOTE_LINE_H;
+        doc.text(l, startX, cy);
+      }
+    }
+    cy += NOTE_LINE_H;
+  }
+
+  // ── NOTE title ──
+  doc.setTextColor(0, 0, 0);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9);
+  doc.text("NOTE (page 1 only — apply the same conventions across the entire Jamabandi)", bodyX, cy);
+  cy += 13;
+
+  // ── Purpose paragraph ──
+  noteLine("Purpose:",
+    "The aim of preparing this report is to ensure that after the Bucketing of data, the target is correctly reflected. Concerned official is required to follow other requisite submission methods to ensure the same. In some cases the names have some additional information attached which may kindly be ignored.");
+  cy += 3;
+
+  // ── Colour-coded legend of Status codes ──
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(bodyFs);
+  doc.setTextColor(0, 0, 0);
+  doc.text("Codes:", bodyX, cy);
+  const codesLabelW = doc.getTextWidth("Codes: ");
+  drawRuns(bodyX + codesLabelW, cy, [
+    { text: "S.A",  bold: true, color: COLOR_SA },
+    { text: " = single-entry alive     " },
+    { text: "D",    bold: true, color: COLOR_D  },
+    { text: " = deceased     " },
+    { text: "D.E",  bold: true, color: COLOR_DE },
+    { text: " = alive but name also appears in another khewat / khata" }
+  ]);
+  cy += NOTE_LINE_H + 3;
+
+  // ── Column-by-column filling ──
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(bodyFs);
+  doc.setTextColor(0, 0, 0);
+  doc.text("Column-by-column filling:", bodyX, cy);
+  cy += NOTE_LINE_H;
+
+  // Status column line — with codes coloured inline
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(0, 0, 0);
+  const statusPrefix = "Status column — enter ";
+  doc.text(statusPrefix, bodyX + 10, cy);
+  drawRuns(bodyX + 10 + doc.getTextWidth(statusPrefix), cy, [
+    { text: "S.A", bold: true, color: COLOR_SA },
+    { text: ", " },
+    { text: "D",   bold: true, color: COLOR_D  },
+    { text: " or " },
+    { text: "D.E", bold: true, color: COLOR_DE },
+    { text: " only." }
+  ]);
+  cy += NOTE_LINE_H;
+
+  // Mutation column header
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(0, 0, 0);
+  doc.text("Mutation Entry Status / Duplicate Khewats —", bodyX + 10, cy);
+  cy += NOTE_LINE_H;
+
+  // Sub-bullets — one per status code, with the code coloured
+  const subIndent = 22;
+  drawRuns(bodyX + subIndent, cy, [
+    { text: "S.A", bold: true, color: COLOR_SA },
+    { text: " -> leave blank" }
+  ]);
+  cy += NOTE_LINE_H;
+
+  drawRuns(bodyX + subIndent, cy, [
+    { text: "D",   bold: true, color: COLOR_D },
+    { text: "   -> " },
+    { text: "M.A", bold: true },
+    { text: " (mutation attested) or " },
+    { text: "M.P", bold: true },
+    { text: " (mutation pending)  — mutation number NOT needed" }
+  ]);
+  cy += NOTE_LINE_H;
+
+  drawRuns(bodyX + subIndent, cy, [
+    { text: "D.E", bold: true, color: COLOR_DE },
+    { text: " -> enter the khewat number(s) where the person appears again" }
+  ]);
+  cy += NOTE_LINE_H;
+
+  // AgriStack line
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(0, 0, 0);
+  doc.text("AgriStack Status — Y / N (whether submitted in AgriStack, considering Status + Mutation above).", bodyX + 10, cy);
+  cy += NOTE_LINE_H + 3;
+
+  // ── Suggestion section (renamed from "Rules (mandatory)") ──
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(bodyFs);
+  doc.setTextColor(0, 0, 0);
+  doc.text("Suggestion:", bodyX, cy);
+  cy += NOTE_LINE_H;
+
+  noteLine("Duplicate-entry check:",
+    "For any person appearing in more than one khewat/khata, verify Name, Parentage, Residence and Caste are spelt exactly the same in every occurrence — treat as CASE-SENSITIVE.", 10);
+  noteLine("Legal heirs:",
+    "For every mutation, ensure ALL legal heirs are mentioned correctly and in full.", 10);
+  noteLine("Special entries — fill uniformly:",
+    "State land -> name = sarkar (lowercase 's');  parentage = na;  residence = na;  caste = namaloom.  Aabadi Deh -> aabadi deh, remaining same.  Khachrai -> sec-4.  Apply the same discipline to any other recurring entry types.", 10);
+
+  const noteEndY = cy + 2;
+
+  // Border around the whole note
+  doc.setDrawColor(0);
+  doc.setLineWidth(0.6);
+  doc.rect(noteX, noteY, noteW, noteEndY - noteY);
+
+  // Reset font state before autoTable takes over
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+  doc.setTextColor(0, 0, 0);
+
+  const tableStartY = noteEndY + 8;
+  // ────────────────────────────────────────────────────────────────────────
+
+  doc.autoTable({
+    startY: tableStartY,         // page 1 begins below the note
+    head,
+    body,
+    theme: "grid",
+    showHead: "everyPage",       // header row (with S.No. label) prints on every page
+    styles: {
+      fontSize: 8,
+      cellPadding: 2,
+      lineColor: [0, 0, 0],
+      lineWidth: 0.4,
+      textColor: [0, 0, 0],
+      valign: "middle",
+      overflow: "linebreak",
+      fillColor: false
+    },
+    headStyles: {
+      fontSize: 8,
+      fontStyle: "bold",
+      halign: "center",
+      valign: "middle",
+      fillColor: false,
+      textColor: [0, 0, 0],
+      lineColor: [0, 0, 0],
+      lineWidth: 0.5,
+      cellPadding: 2
+    },
+    bodyStyles: {
+      fillColor: false
+    },
+    columnStyles,
+    margin: { top: 45, left: 25, right: 25, bottom: 30 },  // pages 2+ start at 45
+    didDrawPage: function () {
+      // Repeat title + page number on every page so a stack of loose printed
+      // sheets stays identifiable per page.
+      doc.setFontSize(11);
+      doc.setFont("helvetica", "bold");
+      doc.text(titleText, 297.5, 28, { align: "center" });
+      doc.setFontSize(7);
+      doc.setFont("helvetica", "normal");
+      const pageNum = doc.internal.getNumberOfPages();
+      doc.text(`Page ${pageNum}`, 570, 835, { align: "right" });
+    }
+  });
+
+  return doc.output("blob");
 }
 
-/* ============================================================
-   UTIL
-   ============================================================ */
-function escapeHtml(s) {
-  return String(s == null ? '' : s)
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+/** Single-file: download the PDF directly. */
+function exportPdfSingle(entry) {
+  const blob = buildPdfBlob(entry.persons, entry.meta);
+  const suffix = entry.meta.mode === "khewat-only" ? "_KhewatOnly" : "";
+  saveAs(blob, `${sanitize(entry.village)}_Persons${suffix}.pdf`);
 }
+
+/** Multi-file: build one PDF per village and download as a single ZIP. */
+async function exportPdfZip(entries) {
+  const zip = new JSZip();
+  const suffix = entries[0].meta.mode === "khewat-only" ? "_KhewatOnly" : "";
+  for (const entry of entries) {
+    const blob = buildPdfBlob(entry.persons, entry.meta);
+    zip.file(`${sanitize(entry.village)}_Persons${suffix}.pdf`, blob);
+  }
+  const content = await zip.generateAsync({ type: "blob" });
+  const tehsil = entries[0].meta.tehsil;
+  saveAs(content, `${sanitize(tehsil)}_${entries.length}Villages_Persons${suffix}_PDF.zip`);
+}
+
+function sanitize(s) {
+  return String(s || "village").replace(/[^A-Za-z0-9_\-]+/g, "_").replace(/^_+|_+$/g, "");
+}
+
+/* =========================================================================
+   WIRE UP
+   ========================================================================= */
+
+// LAST_FILES: array of per-file entries, each { village, persons, meta }.
+// Single-file selection produces a 1-element array; multi-file selection
+// produces one entry per uploaded workbook.
+let LAST_FILES = [];
+
+const statusEl = document.getElementById("status");
+function setStatus(kind, msg) {
+  statusEl.innerHTML = `<div class="msg ${kind}">${msg}</div>`;
+}
+function clearStatus() { statusEl.innerHTML = ""; }
+
+document.getElementById("go").addEventListener("click", async () => {
+  clearStatus();
+  const villageInput = document.getElementById("village").value.trim();
+  const tehsil = document.getElementById("tehsil").value.trim();
+  const files = Array.from(document.getElementById("file").files);
+  const mode = document.querySelector('input[name="mode"]:checked').value;
+
+  if (!tehsil) return setStatus("err", "Enter tehsil.");
+  if (!files.length) return setStatus("err", "Choose at least one Excel file.");
+  // Single file requires either the typed village name or a valid filename to derive it
+  if (files.length === 1 && !villageInput && !villageFromFilename(files[0].name)) {
+    return setStatus("err", "Enter village name (or use a filename that identifies the village).");
+  }
+
+  setStatus("info", `Reading ${files.length} file${files.length > 1 ? "s" : ""}…`);
+  const results = [];
+  const failures = [];
+
+  for (const file of files) {
+    // For single file, prefer the typed village name; otherwise derive from filename.
+    const village = (files.length === 1 && villageInput)
+      ? villageInput
+      : villageFromFilename(file.name);
+    try {
+      const buf = await file.arrayBuffer();
+      const wb = XLSX.read(buf, { type: "array" });
+      const persons = await extractFromWorkbook(wb, mode);
+      if (!persons.length) {
+        failures.push(`${file.name}: no person records found`);
+        continue;
+      }
+      results.push({
+        village,
+        persons,
+        meta: { village, tehsil, mode },
+        sourceFilename: file.name
+      });
+    } catch (err) {
+      console.error(err);
+      failures.push(`${file.name}: ${err.message}`);
+    }
+  }
+
+  if (!results.length) {
+    return setStatus("err", "No person records extracted. " + failures.join("; "));
+  }
+
+  LAST_FILES = results;
+  renderPreview(results);
+
+  const total = results.reduce((n, r) => n + r.persons.length, 0);
+  let msg = `Extracted ${total} person entries from ${results.length} village${results.length > 1 ? "s" : ""}.`;
+  if (failures.length) msg += ` (${failures.length} file${failures.length > 1 ? "s" : ""} failed — see console.)`;
+  setStatus("ok", msg);
+});
+
+document.getElementById("dl-xlsx").addEventListener("click", async () => {
+  if (!LAST_FILES.length) return;
+  if (LAST_FILES.length === 1) await exportExcelSingle(LAST_FILES[0]);
+  else await exportExcelZip(LAST_FILES);
+});
+document.getElementById("dl-pdf").addEventListener("click", async () => {
+  if (!LAST_FILES.length) return;
+  if (LAST_FILES.length === 1) exportPdfSingle(LAST_FILES[0]);
+  else await exportPdfZip(LAST_FILES);
+});
+
+/**
+ * Normalise text for duplicate matching: lowercase, trim, collapse whitespace.
+ */
+function normKey(s) {
+  return String(s || "").toLowerCase().replace(/\s+/g, " ").trim();
+}
+
+/**
+ * Purge Duplicates — drops rows where (Name + Parentage + Caste) match an
+ * earlier row (lowest S.No. kept). Applied per file (each village independently).
+ * After purge: S.No. re-numbered, duplicate flag re-computed, preview re-rendered.
+ */
+document.getElementById("purge-all").addEventListener("click", () => {
+  if (!LAST_FILES.length) return;
+  let removed = 0;
+  for (const entry of LAST_FILES) {
+    const before = entry.persons.length;
+    const seen = new Set();
+    const keep = [];
+    for (const p of entry.persons) {
+      const key = `${normKey(p.name)}|${normKey(p.parentage)}|${normKey(p.caste)}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        keep.push(p);
+      }
+    }
+    entry.persons = keep;
+    renumberAndFlag(entry.persons);
+    removed += before - keep.length;
+  }
+  renderPreview(LAST_FILES);
+  setStatus("ok", `Purged ${removed} duplicate row${removed === 1 ? "" : "s"} (Name + Parentage + Caste).`);
+});
+
+/**
+ * Purge Within-Khewat Duplicates — for each Khewat No., drops rows where the
+ * NAME (only) matches an earlier row within that same Khewat. Rows in different
+ * Khewats are unaffected. Applied per file.
+ * Only meaningful in "Both" mode (Khewat + Khata) — hidden in Khewat-only mode.
+ */
+document.getElementById("purge-within-khewat").addEventListener("click", () => {
+  if (!LAST_FILES.length) return;
+  let removed = 0;
+  for (const entry of LAST_FILES) {
+    const before = entry.persons.length;
+    const seenPerKhewat = new Map();  // khewat → Set<name>
+    const keep = [];
+    for (const p of entry.persons) {
+      const kh = String(p.khewat || "");
+      const nameKey = normKey(p.name);
+      if (!seenPerKhewat.has(kh)) seenPerKhewat.set(kh, new Set());
+      const seen = seenPerKhewat.get(kh);
+      if (!seen.has(nameKey)) {
+        seen.add(nameKey);
+        keep.push(p);
+      }
+    }
+    entry.persons = keep;
+    renumberAndFlag(entry.persons);
+    removed += before - keep.length;
+  }
+  renderPreview(LAST_FILES);
+  setStatus("ok", `Purged ${removed} within-Khewat duplicate${removed === 1 ? "" : "s"} (Name only).`);
+});
+
+document.getElementById("clear").addEventListener("click", () => {
+  document.getElementById("village").value = "";
+  document.getElementById("tehsil").value = "";
+  document.getElementById("file").value = "";
+  document.getElementById("result").hidden = true;
+  LAST_FILES = [];
+  clearStatus();
+});
 </script>
+
 </body>
 </html>
